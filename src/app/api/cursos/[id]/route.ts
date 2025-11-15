@@ -1,6 +1,6 @@
 // src/app/api/cursos/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { Client, PageObjectResponse, CreatePageParameters } from "@notionhq/client";
+import { Client } from "@notionhq/client";
 
 // ----------------------
 // Configuración Notion
@@ -8,7 +8,7 @@ import { Client, PageObjectResponse, CreatePageParameters } from "@notionhq/clie
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
 const DATABASE_ID = process.env.NOTION_DATABASE_ID;
 
-if (!DATABASE_ID) throw new Error("Falta NOTION_DATABASE_ID en variables de entorno");
+if (!DATABASE_ID) throw new Error("Falta NOTION_DATABASE_ID");
 
 // ----------------------
 // Tipado del curso
@@ -40,11 +40,11 @@ async function getCursoPorId(id: string): Promise<Curso | null> {
 
   if (!response.results.length) return null;
 
-  const page = response.results[0];
+  const page = response.results[0] as any; // cast seguro
 
-  if (!("properties" in page)) return null;
+  if (!page.properties) return null;
 
-  const props = (page as PageObjectResponse).properties as any;
+  const props = page.properties;
 
   const curso: Curso = {
     id,
@@ -59,7 +59,7 @@ async function getCursoPorId(id: string): Promise<Curso | null> {
 }
 
 async function createCurso(curso: Curso): Promise<Curso> {
-  const pageParams: CreatePageParameters = {
+  await notion.pages.create({
     parent: { database_id: DATABASE_ID },
     properties: {
       ID: { rich_text: [{ text: { content: curso.id } }] },
@@ -68,9 +68,8 @@ async function createCurso(curso: Curso): Promise<Curso> {
       Profesores: { multi_select: curso.profesores.map(p => ({ name: p })) },
       Fecha_inicio: { date: { start: curso.fecha_inicio } },
     },
-  };
+  });
 
-  await notion.pages.create(pageParams);
   cursoCache[curso.id] = curso;
   return curso;
 }
@@ -84,7 +83,7 @@ async function updateCurso(curso: Curso): Promise<Curso | null> {
 
   if (!response.results.length) return null;
 
-  const pageId = (response.results[0] as PageObjectResponse).id;
+  const pageId = response.results[0].id;
 
   await notion.pages.update({
     page_id: pageId,
@@ -109,7 +108,7 @@ async function deleteCurso(id: string): Promise<boolean> {
 
   if (!response.results.length) return false;
 
-  const pageId = (response.results[0] as PageObjectResponse).id;
+  const pageId = response.results[0].id;
   await notion.pages.update({ page_id: pageId, archived: true });
 
   delete cursoCache[id];
@@ -119,10 +118,7 @@ async function deleteCurso(id: string): Promise<boolean> {
 // ----------------------
 // ENDPOINTS
 // ----------------------
-export async function GET(
-  request: NextRequest,
-  { params }: { params: any }
-) {
+export async function GET(request: NextRequest, { params }: { params: any }) {
   const id = params.id as string;
   if (!id) return NextResponse.json({ ok: false, error: "Falta parámetro id" }, { status: 400 });
 
@@ -136,10 +132,7 @@ export async function GET(
   }
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: any }
-) {
+export async function POST(request: NextRequest, { params }: { params: any }) {
   try {
     const body = await request.json();
     if (!body.id) return NextResponse.json({ ok: false, error: "Falta id" }, { status: 400 });
@@ -159,10 +152,7 @@ export async function POST(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: any }
-) {
+export async function PUT(request: NextRequest, { params }: { params: any }) {
   try {
     const body = await request.json();
     if (!body.id) return NextResponse.json({ ok: false, error: "Falta id" }, { status: 400 });
@@ -184,10 +174,7 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: any }
-) {
+export async function DELETE(request: NextRequest, { params }: { params: any }) {
   const id = params.id as string;
   if (!id) return NextResponse.json({ ok: false, error: "Falta parámetro id" }, { status: 400 });
 
