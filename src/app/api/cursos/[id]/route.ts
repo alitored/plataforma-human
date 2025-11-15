@@ -1,14 +1,11 @@
 // src/app/api/cursos/[id]/route.ts
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, RouteHandler } from "next/server";
 import { Client } from "@notionhq/client";
 
 // Inicializamos Notion
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
 const DATABASE_ID = process.env.NOTION_DATABASE_ID;
 
-if (!DATABASE_ID) throw new Error("Falta NOTION_DATABASE_ID en variables de entorno");
-
-// Tipo del curso
 type Curso = {
   id: string;
   nombre: string;
@@ -17,56 +14,40 @@ type Curso = {
   fecha_inicio: string;
 };
 
-// Cache simple en memoria (clave: id del curso)
+// GET optimizado con cache
 const cursoCache: Record<string, Curso> = {};
 
-// Función para obtener curso por id desde Notion con cache
 async function getCursoPorId(id: string): Promise<Curso | null> {
-  // Retorna de cache si existe
   if (cursoCache[id]) return cursoCache[id];
 
-  try {
-    // Filtramos por propiedad ID (asegúrate de tenerla en tu DB)
-    const response = await notion.databases.query({
-      database_id: DATABASE_ID,
-      filter: {
-        property: "ID",
-        rich_text: {
-          equals: id,
-        },
-      },
-      page_size: 1,
-    });
+  if (!DATABASE_ID) throw new Error("Falta NOTION_DATABASE_ID");
 
-    if (!response.results.length) return null;
+  const response = await notion.databases.query({
+    database_id: DATABASE_ID,
+    filter: { property: "ID", rich_text: { equals: id } },
+    page_size: 1,
+  });
 
-    const page = response.results[0];
-    const props = page.properties as any;
+  if (!response.results.length) return null;
 
-    const curso: Curso = {
-      id,
-      nombre: props.Nombre?.title?.[0]?.plain_text || "",
-      descripcion: props.Descripcion?.rich_text?.[0]?.plain_text || "",
-      profesores: props.Profesores?.multi_select?.map((p: any) => p.name) || [],
-      fecha_inicio: props.Fecha_inicio?.date?.start || "",
-    };
+  const page = response.results[0];
+  const props = page.properties as any;
 
-    // Guardamos en cache
-    cursoCache[id] = curso;
+  const curso: Curso = {
+    id,
+    nombre: props.Nombre?.title?.[0]?.plain_text || "",
+    descripcion: props.Descripcion?.rich_text?.[0]?.plain_text || "",
+    profesores: props.Profesores?.multi_select?.map((p: any) => p.name) || [],
+    fecha_inicio: props.Fecha_inicio?.date?.start || "",
+  };
 
-    return curso;
-  } catch (err) {
-    console.error("Error Notion:", err);
-    return null;
-  }
+  cursoCache[id] = curso;
+  return curso;
 }
 
-// GET: obtener curso por id
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const { id } = params;
+// Exportamos con tipado RouteHandler
+export const GET: RouteHandler = async (request, { params }) => {
+  const id = params.id as string;
 
   if (!id) {
     return NextResponse.json({ ok: false, error: "Falta parámetro id" }, { status: 400 });
@@ -86,4 +67,4 @@ export async function GET(
       { status: 500 }
     );
   }
-}
+};
