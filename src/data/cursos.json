@@ -1,0 +1,24 @@
+[
+  {
+    "id": "2ac6754d-bb0a-8024-be06-c24bb1ea5ab8",
+    "nombre": "WhatsApp Business Estratégico",
+    "descripcion": "Curso práctico para implementar WhatsApp Business como herramienta comercial.",
+    "horas": 12,
+    "módulos": 8,
+    "categoria": "Experiencial",
+    "imagen": "/images/whatsapp.jpg",
+    "destacado": true,
+    "notion_url": "https://www.notion.so/WhatsApp-Business-Estrat-gico-2ac6754dbb0a8024be06c24bb1ea5ab8"
+  },
+  {
+    "id": "2ac6754d-bb0a-80dc-8784-e4574849cbaf",
+    "nombre": "Marketing de Contenidos",
+    "descripcion": "Crea contenido estratégico para redes sociales, blogs y campañas digitales.",
+    "horas": 16,
+    "módulos": 10,
+    "categoria": "Creativo",
+    "imagen": "/images/analyzing-marketing-tools-ehvn58a.jpg",
+    "destacado": true,
+    "notion_url": "https://www.notion.so/Marketing-de-Contenidos-2ac6754dbb0a80dc8784e4574849cbaf"
+  }
+]

@@ -1,0 +1,3 @@
+id,leccion_id,pregunta,opciones,respuesta_correcta
+uuid-601,uuid-201,"¿Qué es Next.js?","A: Framework React|B: Librería|C: Lenguaje","A: Framework React"
+uuid-602,uuid-202,"¿Qué es App Router?","A: Router para Next.js|B: App móvil|C: Base de datos","A: Router para Next.js"

@@ -1,0 +1,3 @@
+id,course_id,titulo,orden,tipo,contenido,duracion_estimada
+uuid-201,uuid-101,Introducción a Next.js,1,texto,Markdown intro,30 min
+uuid-202,uuid-101,App Router,2,video,https://youtube.com/watch?v=abc,45 min

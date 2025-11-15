@@ -1,0 +1,3 @@
+id,slug,titulo,descripcion,portada,modalidad,estado,precio,cupo_max,created_by
+uuid-101,intro-nextjs,Introducción a Next.js,Aprende App Router,https://example.com/portada1.jpg,virtual,publicado,49.99,50,uuid-1
+uuid-102,ux-figma,Diseño UX/UI con Figma,De wireframe a prototipo,https://example.com/portada2.jpg,presencial,borrador,79.99,20,uuid-1

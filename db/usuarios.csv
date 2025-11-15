@@ -1,0 +1,4 @@
+id,nombre,email,rol,foto,bio,fecha_registro
+uuid-1,Juan Pérez,juan@example.com,teacher,https://example.com/juan.jpg,Docente de Next.js,2025-01-01
+uuid-2,María García,maria@example.com,student,https://example.com/maria.jpg,Estudiante de UX,2025-01-15
+uuid-3,Admin User,admin@example.com,admin,https://example.com/admin.jpg,Administrador,2025-01-01

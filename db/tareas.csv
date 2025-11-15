@@ -1,0 +1,3 @@
+id,tarea,responsable,estado,prioridad,deadline,modulo
+uuid-801,Implementar Course Builder,Dev,To Do,Alta,2025-11-20,Contenido
+uuid-802,Integrar Zoom API,Dev2,Doing,Media,2025-12-01,Horarios

@@ -1,0 +1,3 @@
+id,lesson_id,nombre,tipo,url,tags,fecha_subida
+uuid-301,uuid-201,Diapositivas intro,pdf,https://supabase.co/storage/v1/object/public/abc.pdf,"intro,nextjs",2025-01-02
+uuid-302,uuid-202,Video App Router,video,https://youtube.com/watch?v=abc,"app-router,video",2025-01-03

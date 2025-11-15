@@ -1,0 +1,2 @@
+id,inscripcion_id,alumno_id,course_id,fecha_emision,pdf_url,codigo_unico
+uuid-701,uuid-501,uuid-2,uuid-101,2025-03-01,https://example.com/cert1.pdf,CERT-001

@@ -1,0 +1,3 @@
+id,course_id,fecha_hora,duracion,modalidad,zoom_link,grabacion_url,cupo,estado
+uuid-401,uuid-101,2025-02-01 10:00,60,virtual,https://zoom.us/j/123,,20,programada
+uuid-402,uuid-102,2025-02-05 14:00,90,presencial,,,15,programada
