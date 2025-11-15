@@ -6,14 +6,16 @@ export interface Course {
   fecha_inicio?: string;
   profesores?: string[];
 
-  // 🔥 nuevas propiedades que tu CourseTemplate espera
   modalidad?: string;
   forma_pago?: string;
-  fechas_modulos?: string;   // si lo guardás como texto plano
+  fechas_modulos?: string;
   programa?: string;
 
-  // otras que ya tenías
   horas?: number;
   modulos?: string[];
   categoria?: string;
+
+  // 🔥 nuevas propiedades para CourseCard
+  imagen?: string;       // URL de la imagen del curso
+  destacado?: boolean;   // flag para marcar cursos destacados
 }
