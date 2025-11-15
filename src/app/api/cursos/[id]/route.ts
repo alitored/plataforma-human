@@ -18,7 +18,7 @@ const notion = new Client({ auth: NOTION_TOKEN });
 // Tipado del curso
 // ----------------------
 export type Curso = {
-  id: string;
+  id: string;              // ahora usamos page.id de Notion
   nombre: string;
   descripcion: string;
   profesores: string[];
@@ -39,19 +39,11 @@ const cursoCache: Record<string, Curso> = {};
 async function getCursoPorId(id: string): Promise<Curso | null> {
   if (cursoCache[id]) return cursoCache[id];
 
-  const response = await notion.databases.query({
-    database_id: DATABASE_ID,
-    filter: { property: "ID", rich_text: { equals: id } },
-    page_size: 1,
-  });
-
-  if (!response.results.length) return null;
-
-  const page = response.results[0] as any;
-  const props = page.properties;
+  const page = await notion.pages.retrieve({ page_id: id });
+  const props = (page as any).properties;
 
   const curso: Curso = {
-    id,
+    id: page.id,
     nombre: props.Nombre?.title?.[0]?.plain_text || "",
     descripcion: props.Descripcion?.rich_text?.[0]?.plain_text || "",
     profesores: props.Profesores?.multi_select?.map((p: any) => p.name) || [],
@@ -65,11 +57,10 @@ async function getCursoPorId(id: string): Promise<Curso | null> {
   return curso;
 }
 
-async function createCurso(curso: Curso): Promise<Curso> {
-  await notion.pages.create({
+async function createCurso(curso: Omit<Curso, "id">): Promise<Curso> {
+  const response = await notion.pages.create({
     parent: { database_id: DATABASE_ID },
     properties: {
-      ID: { rich_text: [{ text: { content: curso.id } }] },
       Nombre: { title: [{ text: { content: curso.nombre } }] },
       Descripcion: { rich_text: [{ text: { content: curso.descripcion } }] },
       Profesores: { multi_select: (curso.profesores || []).map(p => ({ name: p })) },
@@ -80,23 +71,22 @@ async function createCurso(curso: Curso): Promise<Curso> {
     },
   });
 
-  cursoCache[curso.id] = curso;
-  return curso;
+  const nuevoCurso: Curso = {
+    ...curso,
+    id: response.id, // usamos el page.id de Notion
+  };
+
+  cursoCache[nuevoCurso.id] = nuevoCurso;
+  return nuevoCurso;
 }
 
 async function updateCurso(curso: Curso): Promise<Curso | null> {
-  const response = await notion.databases.query({
-    database_id: DATABASE_ID,
-    filter: { property: "ID", rich_text: { equals: curso.id } },
-    page_size: 1,
-  });
-
-  if (!response.results.length) return null;
-
-  const pageId = (response.results[0] as any).id;
+  // buscamos el curso por page.id
+  const page = await notion.pages.retrieve({ page_id: curso.id }).catch(() => null);
+  if (!page) return null;
 
   await notion.pages.update({
-    page_id: pageId,
+    page_id: curso.id,
     properties: {
       Nombre: { title: [{ text: { content: curso.nombre } }] },
       Descripcion: { rich_text: [{ text: { content: curso.descripcion } }] },
@@ -113,17 +103,10 @@ async function updateCurso(curso: Curso): Promise<Curso | null> {
 }
 
 async function deleteCurso(id: string): Promise<boolean> {
-  const response = await notion.databases.query({
-    database_id: DATABASE_ID,
-    filter: { property: "ID", rich_text: { equals: id } },
-    page_size: 1,
-  });
+  const page = await notion.pages.retrieve({ page_id: id }).catch(() => null);
+  if (!page) return false;
 
-  if (!response.results.length) return false;
-
-  const pageId = (response.results[0] as any).id;
-  await notion.pages.update({ page_id: pageId, archived: true });
-
+  await notion.pages.update({ page_id: id, archived: true });
   delete cursoCache[id];
   return true;
 }
@@ -148,10 +131,8 @@ export async function GET(_request: NextRequest, { params }: { params: any }) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    if (!body.id) return NextResponse.json({ ok: false, error: "Falta id" }, { status: 400 });
 
-    const curso: Curso = {
-      id: body.id,
+    const curso: Omit<Curso, "id"> = {
       nombre: body.nombre || "",
       descripcion: body.descripcion || "",
       profesores: body.profesores || [],
@@ -168,13 +149,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function PUT(request: NextRequest) {
+export async function PUT(request: NextRequest, { params }: { params: any }) {
   try {
+    const id = params.id as string;
     const body = await request.json();
-    if (!body.id) return NextResponse.json({ ok: false, error: "Falta id" }, { status: 400 });
 
     const curso: Curso = {
-      id: body.id,
+      id,
       nombre: body.nombre || "",
       descripcion: body.descripcion || "",
       profesores: body.profesores || [],
