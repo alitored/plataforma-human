@@ -1,20 +1,39 @@
-import { NextResponse } from "next/server";
-import { Client } from "@notionhq/client";
+// src/app/api/cursos/[id]/route.ts
+import { NextRequest, NextResponse } from "next/server";
 
-const notion = new Client({ auth: process.env.NOTION_TOKEN });
+async function getCursoPorId(id: string) {
+  // Reemplazar con fetch real (Notion, Supabase, DB)
+  return {
+    id,
+    nombre: "Curso ejemplo",
+    descripcion: "Descripción breve del curso",
+    profesores: ["Docente 1", "Docente 2"],
+    fecha_inicio: "2025-12-01",
+  };
+}
 
 export async function GET(
-  req: Request,
+  _request: NextRequest,
   { params }: { params: { id: string } }
-) {
+): Promise<NextResponse> {
   try {
-    const blocks = await notion.blocks.children.list({
-      block_id: params.id,
-    });
+    const { id } = params;
 
-    return NextResponse.json({ blocks: blocks.results });
-  } catch (error: any) {
-    console.error("❌ Error consultando Notion:", error.message);
-    return NextResponse.json({ error: "Error interno" }, { status: 500 });
+    if (!id) {
+      return NextResponse.json({ ok: false, error: "Falta parámetro id" }, { status: 400 });
+    }
+
+    const curso = await getCursoPorId(id);
+
+    if (!curso) {
+      return NextResponse.json({ ok: false, error: "Curso no encontrado" }, { status: 404 });
+    }
+
+    return NextResponse.json({ ok: true, data: curso }, { status: 200 });
+  } catch (err) {
+    return NextResponse.json(
+      { ok: false, error: "Error interno", detail: (err as Error).message },
+      { status: 500 }
+    );
   }
 }
