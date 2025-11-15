@@ -49,11 +49,12 @@ export default function CourseCard({ course }: Props) {
               {horas}h
             </span>
           )}
-          {modulos && modulos > 0 && (
-            <span className="inline-block px-2 py-1 rounded-full bg-purple-600 text-white font-semibold">
-              {modulos} módulos
-            </span>
-          )}
+          {modulos && modulos.length > 0 && (
+  <span className="inline-block px-2 py-1 rounded-full bg-purple-600 text-white font-semibold">
+    {modulos.length} módulos
+  </span>
+)}
+
           <span className="inline-block px-2 py-1 rounded-full bg-gray-700 text-gray-200 font-semibold">
             {cat}
           </span>
