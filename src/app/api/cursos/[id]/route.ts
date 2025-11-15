@@ -1,5 +1,5 @@
 // src/app/api/cursos/[id]/route.ts
-import { NextRequest, NextResponse, RouteHandler } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { Client } from "@notionhq/client";
 
 // Inicializamos Notion
@@ -14,9 +14,10 @@ type Curso = {
   fecha_inicio: string;
 };
 
-// GET optimizado con cache
+// Cache simple en memoria
 const cursoCache: Record<string, Curso> = {};
 
+// Función para obtener curso por id desde Notion
 async function getCursoPorId(id: string): Promise<Curso | null> {
   if (cursoCache[id]) return cursoCache[id];
 
@@ -45,8 +46,11 @@ async function getCursoPorId(id: string): Promise<Curso | null> {
   return curso;
 }
 
-// Exportamos con tipado RouteHandler
-export const GET: RouteHandler = async (request, { params }) => {
+// GET: obtener curso por id
+export async function GET(
+  request: NextRequest,
+  { params }: { params: any } // <-- Tipo "any" evita conflicto
+) {
   const id = params.id as string;
 
   if (!id) {
@@ -67,4 +71,4 @@ export const GET: RouteHandler = async (request, { params }) => {
       { status: 500 }
     );
   }
-};
+}
