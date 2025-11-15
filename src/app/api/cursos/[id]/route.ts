@@ -3,14 +3,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { Client } from "@notionhq/client";
 
 // ----------------------
-// Configuración Notion
+// Variables de entorno (fix aplicado)
 // ----------------------
-const NOTION_TOKEN = process.env.NOTION_TOKEN;
-const DATABASE_ID = process.env.NOTION_DATABASE_ID;
+const NOTION_TOKEN: string = process.env.NOTION_TOKEN!;
+const DATABASE_ID: string = process.env.NOTION_DATABASE_ID!;
 
 if (!NOTION_TOKEN) throw new Error("Falta NOTION_TOKEN en variables de entorno");
 if (!DATABASE_ID) throw new Error("Falta NOTION_DATABASE_ID en variables de entorno");
 
+// Inicializamos Notion
 const notion = new Client({ auth: NOTION_TOKEN });
 
 // ----------------------
@@ -25,18 +26,18 @@ export type Curso = {
 };
 
 // ----------------------
-// Cache simple en memoria
+// Cache en memoria para GET
 // ----------------------
 const cursoCache: Record<string, Curso> = {};
 
 // ----------------------
-// Funciones helpers Notion
+// Helpers Notion
 // ----------------------
 async function getCursoPorId(id: string): Promise<Curso | null> {
   if (cursoCache[id]) return cursoCache[id];
 
   const response = await notion.databases.query({
-    database_id: DATABASE_ID,
+    database_id: DATABASE_ID, // ✅ TS ya sabe que es string
     filter: { property: "ID", rich_text: { equals: id } },
     page_size: 1,
   });
@@ -44,8 +45,8 @@ async function getCursoPorId(id: string): Promise<Curso | null> {
   if (!response.results.length) return null;
 
   const page = response.results[0] as any;
-
   if (!page.properties) return null;
+
   const props = page.properties;
 
   const curso: Curso = {
@@ -189,3 +190,4 @@ export async function DELETE(request: NextRequest, { params }: { params: any }) 
     return NextResponse.json({ ok: false, error: "Error interno", detail: (err as Error).message }, { status: 500 });
   }
 }
+
