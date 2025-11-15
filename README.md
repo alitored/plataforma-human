@@ -41,7 +41,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 Plataforma educativa modular con diseño accesible, validación defensiva y sincronización desde Notion.  
 Este proyecto permite visualizar cursos destacados, filtrar por fecha, categoría y título, y navegar por cada curso con un diseño profesional inspirado en Tableau y SEIDOR Analytics.
 
----
+
 
 ## 🚀 Tecnologías
 
@@ -52,7 +52,7 @@ Este proyecto permite visualizar cursos destacados, filtrar por fecha, categorí
 - Notion API
 - Heroicons
 
----
+
 
 ## 📦 Instalación
 
