@@ -5,10 +5,13 @@ import { Client } from "@notionhq/client";
 // ----------------------
 // Configuración Notion
 // ----------------------
-const notion = new Client({ auth: process.env.NOTION_TOKEN });
+const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const DATABASE_ID = process.env.NOTION_DATABASE_ID;
 
-if (!DATABASE_ID) throw new Error("Falta NOTION_DATABASE_ID");
+if (!NOTION_TOKEN) throw new Error("Falta NOTION_TOKEN en variables de entorno");
+if (!DATABASE_ID) throw new Error("Falta NOTION_DATABASE_ID en variables de entorno");
+
+const notion = new Client({ auth: NOTION_TOKEN });
 
 // ----------------------
 // Tipado del curso
@@ -40,10 +43,9 @@ async function getCursoPorId(id: string): Promise<Curso | null> {
 
   if (!response.results.length) return null;
 
-  const page = response.results[0] as any; // cast seguro
+  const page = response.results[0] as any;
 
   if (!page.properties) return null;
-
   const props = page.properties;
 
   const curso: Curso = {
@@ -83,7 +85,7 @@ async function updateCurso(curso: Curso): Promise<Curso | null> {
 
   if (!response.results.length) return null;
 
-  const pageId = response.results[0].id;
+  const pageId = (response.results[0] as any).id;
 
   await notion.pages.update({
     page_id: pageId,
@@ -108,7 +110,7 @@ async function deleteCurso(id: string): Promise<boolean> {
 
   if (!response.results.length) return false;
 
-  const pageId = response.results[0].id;
+  const pageId = (response.results[0] as any).id;
   await notion.pages.update({ page_id: pageId, archived: true });
 
   delete cursoCache[id];
