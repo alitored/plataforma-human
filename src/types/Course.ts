@@ -1,17 +1,19 @@
-import { z } from "zod";
+// src/types/Course.ts
+export interface Course {
+  id: string;
+  nombre: string;
+  descripcion?: string;
+  fecha_inicio?: string;
+  profesores?: string[];
 
-// Esquema de validación
-export const CourseSchema = z.object({
-  id: z.string(),
-  nombre: z.string(),
-  descripcion: z.string().optional(),
-  horas: z.number().optional(),
-  modulos: z.number().optional(),
-  categoria: z.string().optional(),
-  imagen: z.string().optional(),
-  destacado: z.boolean().optional(),
-  profesores: z.array(z.string()).optional(),
-  fecha_inicio: z.string().optional(),
-});
+  // 🔥 nuevas propiedades que tu CourseTemplate espera
+  modalidad?: string;
+  forma_pago?: string;
+  fechas_modulos?: string;   // si lo guardás como texto plano
+  programa?: string;
 
-export type Course = z.infer<typeof CourseSchema>;
+  // otras que ya tenías
+  horas?: number;
+  modulos?: string[];
+  categoria?: string;
+}
