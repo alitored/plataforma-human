@@ -44,12 +44,12 @@ export default function CourseCard({ course }: Props) {
 
         {/* Badges */}
         <div className="mt-3 flex flex-wrap gap-2 text-xs">
-          {horas > 0 && (
+          {horas && horas > 0 && (
             <span className="inline-block px-2 py-1 rounded-full bg-blue-600 text-white font-semibold">
               {horas}h
             </span>
           )}
-          {modulos > 0 && (
+          {modulos && modulos > 0 && (
             <span className="inline-block px-2 py-1 rounded-full bg-purple-600 text-white font-semibold">
               {modulos} módulos
             </span>

@@ -1,11 +1,17 @@
-export interface Course {
-  id: string;          // UUID con guiones
-  nombre: string;      // Nombre del curso
-  descripcion: string; // Texto descriptivo
-  horas: number;       // Duración en horas
-  módulos: number;     // Cantidad de módulos
-  categoria: string;   //  (Branding, UX/UI, etc.)
-  imagen: string;      // Ruta pública de la imagen
-  destacado: boolean;  // Curso destacado
-  notion_url: string;  // URL completa de Notion (referencia)
-}
+import { z } from "zod";
+
+// Esquema de validación
+export const CourseSchema = z.object({
+  id: z.string(),
+  nombre: z.string(),
+  descripcion: z.string().optional(),
+  horas: z.number().optional(),
+  modulos: z.number().optional(),
+  categoria: z.string().optional(),
+  imagen: z.string().optional(),
+  destacado: z.boolean().optional(),
+  profesores: z.array(z.string()).optional(),
+  fecha_inicio: z.string().optional(),
+});
+
+export type Course = z.infer<typeof CourseSchema>;

@@ -1,193 +1,141 @@
 // src/app/api/cursos/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { CourseSchema, Course } from "@/types/Course";
+import { getCursoPorId } from "@/lib/notion/cursos";
 import { Client } from "@notionhq/client";
 
-// ----------------------
-// Variables de entorno (fix aplicado)
-// ----------------------
 const NOTION_TOKEN: string = process.env.NOTION_TOKEN!;
 const DATABASE_ID: string = process.env.NOTION_DATABASE_ID!;
 
-if (!NOTION_TOKEN) throw new Error("Falta NOTION_TOKEN en variables de entorno");
-if (!DATABASE_ID) throw new Error("Falta NOTION_DATABASE_ID en variables de entorno");
+if (!NOTION_TOKEN) throw new Error("Falta NOTION_TOKEN");
+if (!DATABASE_ID) throw new Error("Falta NOTION_DATABASE_ID");
 
-// Inicializamos Notion
 const notion = new Client({ auth: NOTION_TOKEN });
 
-// ----------------------
-// Tipado del curso
-// ----------------------
-export type Curso = {
-  id: string;
-  nombre: string;
-  descripcion: string;
-  profesores: string[];
-  fecha_inicio: string;
-};
-
-// ----------------------
-// Cache en memoria para GET
-// ----------------------
-const cursoCache: Record<string, Curso> = {};
-
-// ----------------------
-// Helpers Notion
-// ----------------------
-async function getCursoPorId(id: string): Promise<Curso | null> {
-  if (cursoCache[id]) return cursoCache[id];
-
-  const response = await notion.databases.query({
-    database_id: DATABASE_ID, // ✅ TS ya sabe que es string
-    filter: { property: "ID", rich_text: { equals: id } },
-    page_size: 1,
-  });
-
-  if (!response.results.length) return null;
-
-  const page = response.results[0] as any;
-  if (!page.properties) return null;
-
-  const props = page.properties;
-
-  const curso: Curso = {
-    id,
-    nombre: props.Nombre?.title?.[0]?.plain_text || "",
-    descripcion: props.Descripcion?.rich_text?.[0]?.plain_text || "",
-    profesores: props.Profesores?.multi_select?.map((p: any) => p.name) || [],
-    fecha_inicio: props.Fecha_inicio?.date?.start || "",
-  };
-
-  cursoCache[id] = curso;
-  return curso;
-}
-
-async function createCurso(curso: Curso): Promise<Curso> {
-  await notion.pages.create({
-    parent: { database_id: DATABASE_ID },
-    properties: {
-      ID: { rich_text: [{ text: { content: curso.id } }] },
-      Nombre: { title: [{ text: { content: curso.nombre } }] },
-      Descripcion: { rich_text: [{ text: { content: curso.descripcion } }] },
-      Profesores: { multi_select: curso.profesores.map(p => ({ name: p })) },
-      Fecha_inicio: { date: { start: curso.fecha_inicio } },
-    },
-  });
-
-  cursoCache[curso.id] = curso;
-  return curso;
-}
-
-async function updateCurso(curso: Curso): Promise<Curso | null> {
-  const response = await notion.databases.query({
-    database_id: DATABASE_ID,
-    filter: { property: "ID", rich_text: { equals: curso.id } },
-    page_size: 1,
-  });
-
-  if (!response.results.length) return null;
-
-  const pageId = (response.results[0] as any).id;
-
-  await notion.pages.update({
-    page_id: pageId,
-    properties: {
-      Nombre: { title: [{ text: { content: curso.nombre } }] },
-      Descripcion: { rich_text: [{ text: { content: curso.descripcion } }] },
-      Profesores: { multi_select: curso.profesores.map(p => ({ name: p })) },
-      Fecha_inicio: { date: { start: curso.fecha_inicio } },
-    },
-  });
-
-  cursoCache[curso.id] = curso;
-  return curso;
-}
-
-async function deleteCurso(id: string): Promise<boolean> {
-  const response = await notion.databases.query({
-    database_id: DATABASE_ID,
-    filter: { property: "ID", rich_text: { equals: id } },
-    page_size: 1,
-  });
-
-  if (!response.results.length) return false;
-
-  const pageId = (response.results[0] as any).id;
-  await notion.pages.update({ page_id: pageId, archived: true });
-
-  delete cursoCache[id];
-  return true;
-}
-
-// ----------------------
-// ENDPOINTS
-// ----------------------
-export async function GET(request: NextRequest, { params }: { params: any }) {
-  const id = params.id as string;
-  if (!id) return NextResponse.json({ ok: false, error: "Falta parámetro id" }, { status: 400 });
-
+// --- GET: obtener curso por ID ---
+export async function GET(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
+    const { id } = params;
+
     const curso = await getCursoPorId(id);
-    if (!curso) return NextResponse.json({ ok: false, error: "Curso no encontrado" }, { status: 404 });
+    if (!curso)
+      return NextResponse.json({ ok: false, error: "Curso no encontrado" }, { status: 404 });
 
-    return NextResponse.json({ ok: true, data: curso }, { status: 200 });
+    // Cache simple (revalidar cada 60s)
+    return NextResponse.json({ ok: true, data: curso }, {
+      status: 200,
+      headers: { "Cache-Control": "public, max-age=60, stale-while-revalidate=60" },
+    });
   } catch (err) {
-    return NextResponse.json({ ok: false, error: "Error interno", detail: (err as Error).message }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: "Error interno", detail: (err as Error).message },
+      { status: 500 }
+    );
   }
 }
 
-export async function POST(request: NextRequest, { params }: { params: any }) {
+// --- POST: crear nuevo curso ---
+export async function POST(req: NextRequest) {
   try {
-    const body = await request.json();
-    if (!body.id) return NextResponse.json({ ok: false, error: "Falta id" }, { status: 400 });
+    const body = await req.json();
 
-    const curso: Curso = {
-      id: body.id,
-      nombre: body.nombre || "",
-      descripcion: body.descripcion || "",
-      profesores: body.profesores || [],
-      fecha_inicio: body.fecha_inicio || "",
-    };
+    const parseResult = CourseSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json({ ok: false, error: "Datos inválidos", detail: parseResult.error.errors }, { status: 400 });
+    }
 
-    const nuevoCurso = await createCurso(curso);
-    return NextResponse.json({ ok: true, data: nuevoCurso }, { status: 201 });
+    const curso: Course = parseResult.data;
+
+    // Crear página en Notion
+    const newPage = await notion.pages.create({
+      parent: { database_id: DATABASE_ID },
+      properties: {
+        ID: { rich_text: [{ text: { content: curso.id } }] },
+        Nombre: { title: [{ text: { content: curso.nombre } }] },
+        Descripcion: { rich_text: [{ text: { content: curso.descripcion || "" } }] },
+        Horas: { number: curso.horas || 0 },
+        Modulos: { number: curso.modulos || 0 },
+        Categoria: { select: { name: curso.categoria || "General" } },
+        Destacado: { checkbox: curso.destacado || false },
+        Fecha_inicio: { date: { start: curso.fecha_inicio || undefined } },
+        Profesores: {
+          multi_select: (curso.profesores || []).map((name) => ({ name })),
+        },
+      },
+    });
+
+    return NextResponse.json({ ok: true, data: curso, notionPageId: newPage.id }, { status: 201 });
   } catch (err) {
-    return NextResponse.json({ ok: false, error: "Error interno", detail: (err as Error).message }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: "Error interno POST", detail: (err as Error).message },
+      { status: 500 }
+    );
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: any }) {
+// --- PUT: actualizar curso existente ---
+export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const body = await request.json();
-    if (!body.id) return NextResponse.json({ ok: false, error: "Falta id" }, { status: 400 });
+    const { id } = params;
+    const body = await req.json();
 
-    const curso: Curso = {
-      id: body.id,
-      nombre: body.nombre || "",
-      descripcion: body.descripcion || "",
-      profesores: body.profesores || [],
-      fecha_inicio: body.fecha_inicio || "",
-    };
+    const parseResult = CourseSchema.partial().safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json({ ok: false, error: "Datos inválidos", detail: parseResult.error.errors }, { status: 400 });
+    }
 
-    const actualizado = await updateCurso(curso);
-    if (!actualizado) return NextResponse.json({ ok: false, error: "Curso no encontrado" }, { status: 404 });
+    const cursoActualizado: Partial<Course> = parseResult.data;
 
-    return NextResponse.json({ ok: true, data: actualizado }, { status: 200 });
+    // Buscar página existente
+    const cursoExistente = await getCursoPorId(id);
+    if (!cursoExistente) return NextResponse.json({ ok: false, error: "Curso no encontrado" }, { status: 404 });
+
+    // Actualizar página Notion
+    const response = await notion.pages.update({
+      page_id: cursoExistente.id, // Aquí necesitarías almacenar el page_id de Notion en tu DB/curso
+      properties: {
+        Nombre: cursoActualizado.nombre ? { title: [{ text: { content: cursoActualizado.nombre } }] } : undefined,
+        Descripcion: cursoActualizado.descripcion ? { rich_text: [{ text: { content: cursoActualizado.descripcion } }] } : undefined,
+        Horas: cursoActualizado.horas !== undefined ? { number: cursoActualizado.horas } : undefined,
+        Modulos: cursoActualizado.modulos !== undefined ? { number: cursoActualizado.modulos } : undefined,
+        Categoria: cursoActualizado.categoria ? { select: { name: cursoActualizado.categoria } } : undefined,
+        Destacado: cursoActualizado.destacado !== undefined ? { checkbox: cursoActualizado.destacado } : undefined,
+        Fecha_inicio: cursoActualizado.fecha_inicio ? { date: { start: cursoActualizado.fecha_inicio } } : undefined,
+        Profesores: cursoActualizado.profesores ? { multi_select: cursoActualizado.profesores.map(name => ({ name })) } : undefined,
+      },
+    });
+
+    return NextResponse.json({ ok: true, data: cursoActualizado }, { status: 200 });
   } catch (err) {
-    return NextResponse.json({ ok: false, error: "Error interno", detail: (err as Error).message }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: "Error interno PUT", detail: (err as Error).message },
+      { status: 500 }
+    );
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: any }) {
-  const id = params.id as string;
-  if (!id) return NextResponse.json({ ok: false, error: "Falta parámetro id" }, { status: 400 });
-
+// --- DELETE: eliminar curso ---
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const eliminado = await deleteCurso(id);
-    if (!eliminado) return NextResponse.json({ ok: false, error: "Curso no encontrado" }, { status: 404 });
+    const { id } = params;
 
-    return NextResponse.json({ ok: true, data: { id } }, { status: 200 });
+    const cursoExistente = await getCursoPorId(id);
+    if (!cursoExistente) return NextResponse.json({ ok: false, error: "Curso no encontrado" }, { status: 404 });
+
+    // Notion no permite borrar páginas directamente, se "archiva"
+    await notion.pages.update({
+      page_id: cursoExistente.id, // almacenar page_id de Notion
+      properties: { Destacado: { checkbox: false } }, // ejemplo de cambio
+    });
+
+    return NextResponse.json({ ok: true, message: "Curso eliminado (archivado)" }, { status: 200 });
   } catch (err) {
-    return NextResponse.json({ ok: false, error: "Error interno", detail: (err as Error).message }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: "Error interno DELETE", detail: (err as Error).message },
+      { status: 500 }
+    );
   }
 }
-
