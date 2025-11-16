@@ -1,28 +1,23 @@
+// src/utils/transformCursos.ts
 import { Course } from "../types/Course";
+import { normalizeImage } from "./coursesMapper"; // reutilizá la función si ya la tenés
 
-// Normaliza rutas de imagen sin romper valores existentes
-function normalizeImage(img?: string): string {
-  if (!img) return "/placeholder.jpg";
-  const trimmed = img.trim();
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed;
-  if (trimmed.startsWith("/")) return trimmed;
-  return `/images/${trimmed}`;
-}
-
-export function transformRow(row: any): Course {
+export function transformCursos(row: any): Course {
   return {
-    id: toUUID(row.notion_url),
+    id: row.id ?? "",
     nombre: row.Nombre?.trim() || "Curso sin nombre",
     descripcion: row.Descripcion?.trim() || "Descripción pendiente",
-    horas: Number.parseInt(row.Horas, 10) || 0,
-    módulos: Number.parseInt(row.Modulos, 10) || 0,
+    horas: Number.parseInt(row.Horas ?? "0", 10) || 0,
+    modulos: row.Modulos
+      ? String(row.Modulos).split(",").map((m: string) => m.trim())
+      : [],
     categoria: row.Categoria?.trim() || "General",
     imagen: normalizeImage(row.Imagen_Destacada),
-    destacado: String(row.Destacado ?? "").toLowerCase().trim() === "yes",
-    notion_url: row.notion_url,
+    destacado:
+      String(row.Destacado ?? "").toLowerCase().trim() === "yes" ||
+      row.Destacado === true,
+    profesores: row.Profesores
+      ? String(row.Profesores).split(",").map((p: string) => p.trim())
+      : [],
   };
-}
-
-function toUUID(id: string): string {
-  return `${id.substring(0,8)}-${id.substring(8,12)}-${id.substring(12,16)}-${id.substring(16,20)}-${id.substring(20)}`;
 }
