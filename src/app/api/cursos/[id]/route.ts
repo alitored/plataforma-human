@@ -6,38 +6,42 @@ import { Client } from "@notionhq/client";
 // Variables de entorno
 // ----------------------
 const NOTION_TOKEN: string = process.env.NOTION_TOKEN!;
-const DATABASE_ID: string = process.env.NOTION_DATABASE_ID!;
-
 if (!NOTION_TOKEN) throw new Error("Falta NOTION_TOKEN en variables de entorno");
-if (!DATABASE_ID) throw new Error("Falta NOTION_DATABASE_ID en variables de entorno");
 
 // Inicializamos Notion
 const notion = new Client({ auth: NOTION_TOKEN });
 
 // ----------------------
-// Tipado del curso
+// Tipado del curso (alineado con la UI)
 // ----------------------
-type Curso = {
+interface Course {
   id: string;
   nombre: string;
-  descripcion: string;
-  profesores: string[];
-  fecha_inicio: string;
+  descripcion?: string;
+  fecha_inicio?: string;
+  profesores: string[];      // aseguramos array
   horas?: number;
-  modulos?: string[];
+  modulos: string[];         // aseguramos array
   categoria?: string;
-};
+  imagen?: string;
+  destacado?: boolean;
+  modalidad?: string;
+  forma_pago?: string;
+  fechas_modulos?: string;
+  programa?: string;
+}
 
 // ----------------------
 // Función inline: getCursoPorId
 // ----------------------
-async function getCursoPorId(id: string): Promise<Curso | null> {
+async function getCursoPorId(id: string): Promise<Course | null> {
   try {
     const page = await notion.pages.retrieve({ page_id: id });
     const props = (page as any).properties;
 
-    const curso: Curso = {
+    const curso: Course = {
       id: page.id,
+      // Si en Notion "Nombre" fuera Title, podrías usar props.Nombre?.title?.[0]?.plain_text
       nombre: props.Nombre?.rich_text?.[0]?.plain_text || "",
       descripcion: props.Descripcion?.rich_text?.[0]?.plain_text || "",
       profesores: props.Profesores?.multi_select?.map((p: any) => p.name) || [],
@@ -45,6 +49,12 @@ async function getCursoPorId(id: string): Promise<Curso | null> {
       horas: props.Horas?.number || 0,
       modulos: props.Modulos?.multi_select?.map((m: any) => m.name) || [],
       categoria: props.Categoria?.select?.name || "",
+      imagen: props.Imagen?.url || "",
+      destacado: props.Destacado?.checkbox || false,
+      modalidad: props.Modalidad?.rich_text?.[0]?.plain_text || "",
+      forma_pago: props.Forma_pago?.rich_text?.[0]?.plain_text || "",
+      fechas_modulos: props.Fechas_modulos?.rich_text?.[0]?.plain_text || "",
+      programa: props.Programa?.rich_text?.[0]?.plain_text || "",
     };
 
     return curso;
@@ -56,8 +66,8 @@ async function getCursoPorId(id: string): Promise<Curso | null> {
 // ----------------------
 // Endpoint GET
 // ----------------------
-export async function GET(_request: NextRequest, { params }: { params: any }) {
-  const id = params.id as string;
+export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+  const id = params?.id;
   if (!id) {
     return NextResponse.json({ ok: false, error: "Falta parámetro id" }, { status: 400 });
   }

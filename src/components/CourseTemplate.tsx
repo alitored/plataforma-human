@@ -1,3 +1,4 @@
+// src/components/CourseTemplate.tsx
 import { Course } from "@/types/Course";
 import {
   CalendarIcon,
@@ -12,7 +13,7 @@ export default function CourseTemplate({
   nombre,
   descripcion,
   fecha_inicio,
-  profesores,
+  profesores = [], // 👈 default vacío para evitar undefined
   modalidad,
   forma_pago,
   fechas_modulos,
@@ -49,7 +50,7 @@ export default function CourseTemplate({
               </div>
             </div>
           )}
-          {profesores?.length > 0 && (
+          {profesores.length > 0 && (
             <div className="flex items-center gap-3 rounded-xl bg-white/10 backdrop-blur p-4">
               <UserIcon className="w-6 h-6 text-white" />
               <div className="leading-tight">
@@ -121,7 +122,7 @@ export default function CourseTemplate({
                   <span>Inicio: {fechaLegible}</span>
                 </li>
               )}
-              {profesores?.length > 0 && (
+              {profesores.length > 0 && (
                 <li className="flex items-center gap-2">
                   <UserIcon className="w-4 h-4 text-emerald-600" />
                   <span>Profesor(es): {profesores.join(", ")}</span>
