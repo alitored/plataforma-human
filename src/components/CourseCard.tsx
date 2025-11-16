@@ -1,3 +1,4 @@
+// src/components/CourseCard.tsx
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRightIcon } from "@heroicons/react/24/solid";
@@ -12,8 +13,8 @@ export default function CourseCard({ course }: Props) {
     id,
     nombre,
     descripcion,
-    horas,
-    modulos,
+    horas = 0,
+    modulos = [],
     categoria,
     imagen,
     destacado,
@@ -33,7 +34,7 @@ export default function CourseCard({ course }: Props) {
           fill
           className="object-cover"
           sizes="(max-width: 768px) 100vw, 33vw"
-          priority={destacado}
+          priority={!!destacado}
         />
       </div>
 
@@ -44,17 +45,16 @@ export default function CourseCard({ course }: Props) {
 
         {/* Badges */}
         <div className="mt-3 flex flex-wrap gap-2 text-xs">
-          {horas && horas > 0 && (
+          {horas > 0 && (
             <span className="inline-block px-2 py-1 rounded-full bg-blue-600 text-white font-semibold">
               {horas}h
             </span>
           )}
-          {modulos && modulos.length > 0 && (
-  <span className="inline-block px-2 py-1 rounded-full bg-purple-600 text-white font-semibold">
-    {modulos.length} módulos
-  </span>
-)}
-
+          {modulos.length > 0 && (
+            <span className="inline-block px-2 py-1 rounded-full bg-purple-600 text-white font-semibold">
+              {modulos.length} módulos
+            </span>
+          )}
           <span className="inline-block px-2 py-1 rounded-full bg-gray-700 text-gray-200 font-semibold">
             {cat}
           </span>
