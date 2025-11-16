@@ -66,8 +66,8 @@ async function getCursoPorId(id: string): Promise<Course | null> {
 // ----------------------
 // Endpoint GET
 // ----------------------
-export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
-  const id = params?.id;
+export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params; // 👈 ahora se espera la promesa
   if (!id) {
     return NextResponse.json({ ok: false, error: "Falta parámetro id" }, { status: 400 });
   }
@@ -86,3 +86,4 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
     );
   }
 }
+
