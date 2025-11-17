@@ -81,14 +81,40 @@ function normalizeModulosField(field: any): string[] {
   return [];
 }
 
-export async function GET(req: Request, context: { params?: any }) {
+// Función segura para acceder a propiedades de Notion
+function getSafeProperties(page: any): any {
   try {
-    const params = await context.params;
-    const rawId = params?.id;
+    // Para diferentes tipos de respuesta de Notion
+    if ('properties' in page) {
+      return page.properties;
+    }
+    
+    // Si es una respuesta parcial, intentamos acceder de otra manera
+    if (page.object === 'page') {
+      // En algunos casos puede que necesitemos hacer un cast
+      return (page as any).properties || {};
+    }
+    
+    return {};
+  } catch {
+    return {};
+  }
+}
+
+export async function GET(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { id: rawId } = params;
     const id = normalizeId(rawId);
 
     if (!id) {
-      return NextResponse.json({ ok: false, error: "Invalid course id", rawId }, { status: 400 });
+      return NextResponse.json({ 
+        ok: false, 
+        error: "Invalid course id", 
+        rawId 
+      }, { status: 400 });
     }
 
     console.log("🔍 API Individual - Buscando curso ID:", id);
@@ -97,14 +123,22 @@ export async function GET(req: Request, context: { params?: any }) {
     if (notion) {
       try {
         const page = await notion.pages.retrieve({ page_id: id });
-        const props = page.properties ?? {};
+        const props = getSafeProperties(page);
 
         console.log("🔍 Propiedades de Notion encontradas:", Object.keys(props));
 
         // PROCESAR LOS CAMPOS COMO EN LA API DE LISTA
         const rawModulos = props.Modulos?.number ?? props.Modulos?.rich_text ?? props.Modulos ?? null;
         const modulos = normalizeModulosField(rawModulos);
-        const imagenUrl = safeFilesFirstUrl(props.Imagen_Destacada?.files ?? props.Imagen_Destacada);
+        
+        // Manejo seguro de la imagen
+        let imagenUrl = null;
+        try {
+          const imagenFiles = props.Imagen_Destacada?.files ?? props.Imagen_Destacada;
+          imagenUrl = safeFilesFirstUrl(imagenFiles);
+        } catch (e) {
+          console.warn("⚠️ Error al procesar imagen:", e);
+        }
 
         const course = {
           id: page.id,
@@ -137,7 +171,21 @@ export async function GET(req: Request, context: { params?: any }) {
 
       } catch (e: any) {
         console.warn("❌ Notion retrieve failed for id:", id, e?.message ?? e);
-        return NextResponse.json({ ok: false, error: "Notion page not found", id }, { status: 404 });
+        
+        // Verificar si es error de tipo (TypeError) o de Notion
+        if (e instanceof TypeError) {
+          return NextResponse.json({ 
+            ok: false, 
+            error: "Type error accessing Notion properties",
+            details: e.message 
+          }, { status: 500 });
+        }
+        
+        return NextResponse.json({ 
+          ok: false, 
+          error: "Notion page not found", 
+          id 
+        }, { status: 404 });
       }
     }
 
@@ -154,6 +202,9 @@ export async function GET(req: Request, context: { params?: any }) {
     });
   } catch (err: any) {
     console.error("💥 Error in /api/courses/[id]:", err);
-    return NextResponse.json({ ok: false, error: String(err?.message ?? err) }, { status: 500 });
+    return NextResponse.json({ 
+      ok: false, 
+      error: String(err?.message ?? err) 
+    }, { status: 500 });
   }
 }
