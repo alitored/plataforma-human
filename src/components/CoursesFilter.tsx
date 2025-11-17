@@ -1,39 +1,71 @@
+// src/components/CoursesFilter.tsx
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Course } from "@/types/Course";
 
 interface Props {
-  courses: Course[];
+  courses?: Course[];            // ✅ opcional para mayor tolerancia
   onFilter: (filtered: Course[]) => void;
 }
 
-export default function CoursesFilter({ courses, onFilter }: Props) {
+export default function CoursesFilter({ courses = [], onFilter }: Props) {
+  // ✅ siempre trabajar con un array
+  const safeCourses: Course[] = Array.isArray(courses) ? courses : [];
+
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedTitle, setSelectedTitle] = useState<string>("");
 
-  // Extraer categorías únicas
-  const categories = Array.from(new Set(courses.map((c) => c.categoria)));
-  // Extraer títulos únicos
-  const titles = Array.from(new Set(courses.map((c) => c.nombre)));
+  // ✅ valores únicos y limpios
+  const categories = useMemo(() => {
+    return Array.from(
+      new Set(
+        safeCourses
+          .map((c) => (c.categoria ?? "").trim())
+          .filter((v) => v.length > 0)
+      )
+    ).sort(Intl.Collator("es").compare);
+  }, [safeCourses]);
+
+  const titles = useMemo(() => {
+    return Array.from(
+      new Set(
+        safeCourses
+          .map((c) => (c.nombre ?? "").trim())
+          .filter((v) => v.length > 0)
+      )
+    ).sort(Intl.Collator("es").compare);
+  }, [safeCourses]);
 
   const handleFilter = () => {
-    let filtered = [...courses];
+    let filtered = [...safeCourses];
 
     if (selectedDate) {
-      filtered = filtered.filter(
-        (c) =>
-          c.fecha_inicio &&
-          new Date(c.fecha_inicio).toISOString().slice(0, 10) === selectedDate
-      );
+      filtered = filtered.filter((c) => {
+        const start = c.fecha_inicio ? new Date(c.fecha_inicio) : null;
+        if (!start || Number.isNaN(start.getTime())) return false;
+        // Normalizar a YYYY-MM-DD
+        const iso = new Date(
+          start.getFullYear(),
+          start.getMonth(),
+          start.getDate()
+        )
+          .toISOString()
+          .slice(0, 10);
+        return iso === selectedDate;
+      });
     }
 
     if (selectedCategory) {
-      filtered = filtered.filter((c) => c.categoria === selectedCategory);
+      filtered = filtered.filter(
+        (c) => (c.categoria ?? "").trim() === selectedCategory
+      );
     }
 
     if (selectedTitle) {
-      filtered = filtered.filter((c) => c.nombre === selectedTitle);
+      filtered = filtered.filter(
+        (c) => (c.nombre ?? "").trim() === selectedTitle
+      );
     }
 
     onFilter(filtered);

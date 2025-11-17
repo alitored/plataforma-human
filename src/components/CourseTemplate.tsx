@@ -1,150 +1,268 @@
-// src/components/CourseTemplate.tsx
+// src/components/CourseTemplate.tsx - VERSIÓN MEJORADA
 import { Course } from "@/types/Course";
 import {
   CalendarIcon,
   UserIcon,
   CreditCardIcon,
   AcademicCapIcon,
+  ClockIcon,
+  TagIcon,
 } from "@heroicons/react/24/outline";
 
-interface Props extends Course {}
+interface Props extends Partial<Course> {}
 
 export default function CourseTemplate({
-  nombre,
-  descripcion,
+  nombre = "Curso",
+  descripcion = "",
   fecha_inicio,
-  profesores = [], // 👈 default vacío para evitar undefined
-  modalidad,
-  forma_pago,
-  fechas_modulos,
-  programa,
+  profesores = [],
+  horas = 0,
+  modulos = [],
+  categoria = "General",
+  imagen,
+  destacado = false,
+  modalidad = "",
+  forma_pago = "",
+  fechas_modulos = "",
+  programa = "",
 }: Props) {
-  const fechaLegible =
-    fecha_inicio ? new Date(fecha_inicio).toLocaleDateString("es-AR") : null;
+  // Normalizar fecha
+  let fechaLegible: string | null = null;
+  if (fecha_inicio) {
+    try {
+      const d = new Date(fecha_inicio);
+      fechaLegible = Number.isNaN(d.getTime()) ? null : d.toLocaleDateString("es-AR");
+    } catch {
+      fechaLegible = null;
+    }
+  }
+
+  const profesoresList = Array.isArray(profesores) ? profesores : [];
 
   return (
-    <article className="space-y-12">
-      {/* Hero */}
-      <section className="rounded-2xl bg-gradient-to-br from-emerald-700 to-emerald-900 text-white p-8 shadow-lg">
-        <div className="flex flex-col gap-4">
-          <span className="inline-flex items-center gap-2 text-sm font-semibold text-white/80">
-            <AcademicCapIcon className="w-5 h-5" />
-            Curso profesional
-          </span>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-            {nombre}
-          </h1>
-          {descripcion && (
-            <p className="text-white/85 text-lg max-w-3xl">{descripcion}</p>
-          )}
-        </div>
+    <article className="space-y-8">
+      {/* Hero Section */}
+      <section className="relative rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-800 text-white p-6 sm:p-8 shadow-xl overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 bg-black/10"></div>
+        
+        <div className="relative space-y-4">
+          {/* Badge */}
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="inline-flex items-center gap-2 text-sm font-semibold text-white/90 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full">
+              <AcademicCapIcon className="w-4 h-4" />
+              Curso profesional
+            </span>
+            {destacado && (
+              <span className="inline-flex items-center gap-2 text-sm font-semibold text-amber-900 bg-amber-400 px-3 py-1.5 rounded-full">
+                ⭐ Destacado
+              </span>
+            )}
+          </div>
 
-        {/* Badges */}
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {fechaLegible && (
-            <div className="flex items-center gap-3 rounded-xl bg-white/10 backdrop-blur p-4">
-              <CalendarIcon className="w-6 h-6 text-white" />
-              <div className="leading-tight">
-                <p className="text-xs text-white/70">Fecha de inicio</p>
-                <p className="text-base font-semibold">{fechaLegible}</p>
+          {/* Title and Description */}
+          <div className="space-y-4">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-tight">
+              {nombre}
+            </h1>
+            {descripcion && (
+              <p className="text-lg sm:text-xl text-white/90 leading-relaxed max-w-3xl">
+                {descripcion}
+              </p>
+            )}
+          </div>
+
+          {/* Info Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4">
+            {fechaLegible && (
+              <div className="flex items-center gap-3 rounded-xl bg-white/10 backdrop-blur-sm p-4 border border-white/20">
+                <CalendarIcon className="w-6 h-6 text-white flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs text-white/70 font-medium">Inicia</p>
+                  <p className="text-base font-semibold truncate">{fechaLegible}</p>
+                </div>
+              </div>
+            )}
+            
+            <div className="flex items-center gap-3 rounded-xl bg-white/10 backdrop-blur-sm p-4 border border-white/20">
+              <ClockIcon className="w-6 h-6 text-white flex-shrink-0" />
+              <div>
+                <p className="text-xs text-white/70 font-medium">Duración</p>
+                <p className="text-base font-semibold">{horas} horas</p>
               </div>
             </div>
-          )}
-          {profesores.length > 0 && (
-            <div className="flex items-center gap-3 rounded-xl bg-white/10 backdrop-blur p-4">
-              <UserIcon className="w-6 h-6 text-white" />
-              <div className="leading-tight">
-                <p className="text-xs text-white/70">Profesores</p>
-                <p className="text-base font-semibold">
-                  {profesores.join(", ")}
-                </p>
+
+            {profesoresList.length > 0 && (
+              <div className="flex items-center gap-3 rounded-xl bg-white/10 backdrop-blur-sm p-4 border border-white/20">
+                <UserIcon className="w-6 h-6 text-white flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs text-white/70 font-medium">Profesor{profesoresList.length > 1 ? 'es' : ''}</p>
+                  <p className="text-base font-semibold truncate">
+                    {profesoresList.join(", ")}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 rounded-xl bg-white/10 backdrop-blur-sm p-4 border border-white/20">
+              <TagIcon className="w-6 h-6 text-white flex-shrink-0" />
+              <div>
+                <p className="text-xs text-white/70 font-medium">Categoría</p>
+                <p className="text-base font-semibold">{categoria}</p>
               </div>
             </div>
-          )}
-          {forma_pago && (
-            <div className="flex items-center gap-3 rounded-xl bg-white/10 backdrop-blur p-4">
-              <CreditCardIcon className="w-6 h-6 text-white" />
-              <div className="leading-tight">
-                <p className="text-xs text-white/70">Forma de pago</p>
-                <p className="text-base font-semibold">{forma_pago}</p>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       </section>
 
-      {/* Contenido principal */}
+      {/* Main Content */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Columna izquierda: modalidad y fechas por módulo */}
+        {/* Left Column - Main Content */}
         <div className="lg:col-span-2 space-y-8">
-          {modalidad && (
-            <div className="rounded-xl bg-white text-gray-900 p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-verde-oscuro mb-2">
-                Modalidad
-              </h2>
-              <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-                {modalidad}
-              </p>
+          {/* Course Image */}
+          {imagen && (
+            <div className="rounded-2xl overflow-hidden shadow-lg">
+              <img
+                src={imagen}
+                alt={nombre}
+                className="w-full h-64 sm:h-80 lg:h-96 object-cover"
+              />
             </div>
           )}
 
-          {fechas_modulos && (
-            <div className="rounded-xl bg-white text-gray-900 p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-verde-oscuro mb-3">
-                Fechas de cada módulo
+          {/* Modality */}
+          {modalidad && (
+            <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-200">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <AcademicCapIcon className="w-6 h-6 text-emerald-600" />
+                Modalidad del Curso
               </h2>
-              <div className="prose max-w-none text-gray-800 whitespace-pre-line">
+              <div className="prose prose-lg max-w-none text-gray-700 leading-relaxed whitespace-pre-line">
+                {modalidad}
+              </div>
+            </div>
+          )}
+
+          {/* Modules */}
+          {modulos.length > 0 && (
+            <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-200">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                Estructura del Curso ({modulos.length} módulos)
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {modulos.map((modulo, index) => (
+                  <div
+                    key={index}
+                    className="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex-shrink-0 w-10 h-10 bg-emerald-500 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                      {index + 1}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-gray-900 text-lg leading-tight">
+                        {modulo}
+                      </h3>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Dates by Module */}
+          {fechas_modulos && (
+            <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-200">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <CalendarIcon className="w-6 h-6 text-blue-600" />
+                Calendario Académico
+              </h2>
+              <div className="prose prose-lg max-w-none text-gray-700 leading-relaxed whitespace-pre-line bg-blue-50 p-4 rounded-lg">
                 {fechas_modulos}
               </div>
             </div>
           )}
 
+          {/* Program */}
           {programa && (
-            <div className="rounded-xl bg-white text-gray-900 p-6 shadow-sm">
-              <h2 className="text-xl font-bold text-verde-oscuro mb-3">
-                Programa
-              </h2>
-              <div className="prose max-w-none text-gray-800 whitespace-pre-line">
+            <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-200">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Programa Detallado</h2>
+              <div className="prose prose-lg max-w-none text-gray-700 leading-relaxed whitespace-pre-line">
                 {programa}
               </div>
             </div>
           )}
         </div>
 
-        {/* Columna derecha: resumen y CTA */}
+        {/* Right Column - Sidebar */}
         <aside className="space-y-6">
-          <div className="rounded-xl bg-white text-gray-900 p-6 shadow-sm">
-            <h3 className="text-lg font-bold text-verde-oscuro">Resumen</h3>
-            <ul className="mt-3 space-y-2 text-sm text-gray-700">
+          {/* Summary Card */}
+          <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-200 sticky top-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Resumen del Curso</h3>
+            
+            <div className="space-y-4">
               {fechaLegible && (
-                <li className="flex items-center gap-2">
-                  <CalendarIcon className="w-4 h-4 text-emerald-600" />
-                  <span>Inicio: {fechaLegible}</span>
-                </li>
+                <div className="flex items-center gap-3">
+                  <CalendarIcon className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm text-gray-600">Fecha de inicio</p>
+                    <p className="font-semibold text-gray-900">{fechaLegible}</p>
+                  </div>
+                </div>
               )}
-              {profesores.length > 0 && (
-                <li className="flex items-center gap-2">
-                  <UserIcon className="w-4 h-4 text-emerald-600" />
-                  <span>Profesor(es): {profesores.join(", ")}</span>
-                </li>
+
+              <div className="flex items-center gap-3">
+                <ClockIcon className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                <div>
+                  <p className="text-sm text-gray-600">Duración total</p>
+                  <p className="font-semibold text-gray-900">{horas} horas</p>
+                </div>
+              </div>
+
+              {profesoresList.length > 0 && (
+                <div className="flex items-center gap-3">
+                  <UserIcon className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm text-gray-600">Profesor{profesoresList.length > 1 ? 'es' : ''}</p>
+                    <p className="font-semibold text-gray-900">{profesoresList.join(", ")}</p>
+                  </div>
+                </div>
               )}
+
               {forma_pago && (
-                <li className="flex items-center gap-2">
-                  <CreditCardIcon className="w-4 h-4 text-emerald-600" />
-                  <span>Pago: {forma_pago}</span>
-                </li>
+                <div className="flex items-center gap-3">
+                  <CreditCardIcon className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm text-gray-600">Forma de pago</p>
+                    <p className="font-semibold text-gray-900">{forma_pago}</p>
+                  </div>
+                </div>
               )}
-            </ul>
+            </div>
+
+            {/* CTA Button */}
+            <div className="mt-6 space-y-3">
+              <button className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg">
+                🎓 Inscribirme Ahora
+              </button>
+              
+              <a
+                href="/cursos"
+                className="block w-full text-center text-emerald-700 hover:text-emerald-800 font-medium py-2 px-4 rounded-xl border-2 border-emerald-200 hover:border-emerald-300 transition-all duration-200"
+              >
+                ← Volver a Cursos
+              </a>
+            </div>
           </div>
 
-          <div className="rounded-xl bg-emerald-50 p-6 border border-emerald-200">
-            <h4 className="text-emerald-900 font-semibold">
-              ¿Listo para empezar?
-            </h4>
-            <p className="text-emerald-800 text-sm mt-1">
-              Inscribite y viví la experiencia de aprender con acompañamiento humano.
+          {/* Additional Info */}
+          <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 p-6 border border-blue-200">
+            <h4 className="font-bold text-blue-900 text-lg mb-2">¿Necesitas más información?</h4>
+            <p className="text-blue-800 text-sm mb-4">
+              Contactanos para resolver todas tus dudas sobre este curso.
             </p>
-            <button className="mt-4 btn">Inscribirme</button>
+            <button className="w-full bg-white text-blue-700 hover:bg-blue-50 font-medium py-2 px-4 rounded-xl border border-blue-300 transition-colors">
+              📞 Contactar
+            </button>
           </div>
         </aside>
       </section>

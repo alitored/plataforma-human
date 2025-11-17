@@ -45,7 +45,7 @@ export default function Hero() {
       {/* Image */}
       <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-white/10 backdrop-blur-xl">
         <Image
-          src="/images/hero.jpg"
+          src="/images/hero.webp"
           alt="Hero"
           width={800}
           height={600}
