@@ -1,56 +1,90 @@
 // src/app/api/courses/[id]/route.ts
 import { NextResponse } from "next/server";
 import { Client } from "@notionhq/client";
+import type {
+  PageObjectResponse,
+  SelectPropertyItemObjectResponse,
+  FilesPropertyItemObjectResponse,
+  RichTextItemResponse,
+  TitlePropertyValue,
+} from "@notionhq/client/build/src/api-endpoints";
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const notion = NOTION_TOKEN ? new Client({ auth: NOTION_TOKEN }) : null;
 
-// Accepts both dashed UUID and 32-char hex; returns dashed UUID or null
+export type ApiCourse = {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  horas: number;
+  modulos: string[];
+  categoria: string | null;
+  imagen: string | null;
+  destacado: boolean;
+  fecha_inicio: string | null;
+  profesores: string[];
+  modalidad: string;
+  forma_pago: string | null;
+  fechas_modulos: string;
+  programa: string;
+};
+
 function normalizeId(raw: unknown): string | null {
   if (!raw) return null;
   const s = String(raw).trim();
-  const cleaned = decodeURIComponent(s).replace(/\s+/g, "");
-  // already dashed UUID
-  if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(cleaned)) {
+  const cleaned = decodeURIComponent(s)
+    .replace(/[#?].*$/, "") // remove query/fragment
+    .replace(/\s+/g, "");
+  // dashed uuid
+  if (
+    /^[0-9a-fA-F-]{36}$/.test(cleaned) &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleaned)
+  ) {
     return cleaned.toLowerCase();
   }
-  // 32 hex without dashes -> insert dashes
+  // 32-hex to dashed
   const onlyHex = cleaned.replace(/[^0-9a-fA-F]/g, "");
   if (/^[0-9a-fA-F]{32}$/.test(onlyHex)) {
-    return `${onlyHex.slice(0,8)}-${onlyHex.slice(8,12)}-${onlyHex.slice(12,16)}-${onlyHex.slice(16,20)}-${onlyHex.slice(20,32)}`.toLowerCase();
+    return `${onlyHex.slice(0, 8)}-${onlyHex.slice(8, 12)}-${onlyHex.slice(12, 16)}-${onlyHex.slice(
+      16,
+      20
+    )}-${onlyHex.slice(20, 32)}`.toLowerCase();
   }
   return null;
 }
 
-function safeTextFromTitle(titleBlock: any): string {
+function safeTextFromTitle(titleBlock: TitlePropertyValue["title"] | any): string {
   try {
-    return titleBlock?.[0]?.plain_text ?? "";
+    return (titleBlock?.[0]?.plain_text ?? "").trim();
   } catch {
     return "";
   }
 }
 
-function safeRichTextToString(rich: any): string {
+function safeRichTextToString(rich: RichTextItemResponse[] | any): string {
   try {
     if (!rich) return "";
-    if (Array.isArray(rich)) return rich.map((r: any) => r?.plain_text ?? "").join(" ");
-    return String(rich);
+    const text = Array.isArray(rich)
+      ? rich.map((r: any) => r?.plain_text ?? "").join(" ")
+      : String(rich);
+    return text.replace(/\s{2,}/g, " ").trim();
   } catch {
     return "";
   }
 }
 
-function safeSelectName(sel: any): string | null {
+function safeSelectName(sel: SelectPropertyItemObjectResponse["select"] | any): string | null {
   try {
-    return sel?.name ?? null;
+    return (sel?.name ?? null) || null;
   } catch {
     return null;
   }
 }
 
-function safeFilesFirstUrl(files: any): string | null {
+function safeFilesFirstUrl(files: FilesPropertyItemObjectResponse["files"] | any): string | null {
   try {
-    const first = files?.[0];
+    const arr = Array.isArray(files) ? files : files?.files ?? [];
+    const first = arr?.[0];
     return first?.file?.url ?? first?.external?.url ?? null;
   } catch {
     return null;
@@ -59,155 +93,155 @@ function safeFilesFirstUrl(files: any): string | null {
 
 function normalizeModulosField(field: any): string[] {
   if (Array.isArray(field)) {
-    return field.map((f: any, i: number) => {
-      if (typeof f === "string") return f;
-      return f?.name ?? f?.title ?? `Modulo ${i + 1}`;
-    });
+    return field.map((f: any, i: number) =>
+      typeof f === "string" ? f : f?.name ?? f?.title ?? `Módulo ${i + 1}`
+    );
   }
-
   const n = Number(field);
   if (!Number.isNaN(n) && Number.isFinite(n) && n > 0) {
-    return Array.from({ length: Math.max(0, Math.floor(n)) }, (_, i) => `Modulo ${i + 1}`);
+    return Array.from({ length: Math.floor(n) }, (_, i) => `Módulo ${i + 1}`);
   }
-
   if (typeof field === "string") {
-    const parts = field
-      .split(/\r?\n|,|;/)
-      .map(s => s.trim())
-      .filter(Boolean);
+    const parts = field.split(/\r?\n|,|;/).map((s) => s.trim()).filter(Boolean);
     if (parts.length) return parts;
   }
-
   return [];
 }
 
-// Función segura para acceder a propiedades de Notion
-function getSafeProperties(page: any): any {
-  try {
-    // Para diferentes tipos de respuesta de Notion
-    if ('properties' in page) {
-      return page.properties;
-    }
-    
-    // Si es una respuesta parcial, intentamos acceder de otra manera
-    if (page.object === 'page') {
-      // En algunos casos puede que necesitemos hacer un cast
-      return (page as any).properties || {};
-    }
-    
-    return {};
-  } catch {
-    return {};
+function resolveProp<T = any>(props: Record<string, any>, keys: string[]): T | undefined {
+  for (const k of keys) {
+    if (props[k] !== undefined) return props[k];
   }
+  return undefined;
 }
 
-// Sintaxis correcta para Next.js 16
-export async function GET(
-  request: Request,
-  context: { params: Promise<{ id: string }> }
-) {
+export async function GET(req: Request, context: { params?: any }) {
   try {
-    // IMPORTANTE: await params en Next.js 16
     const params = await context.params;
-    const { id: rawId } = params;
+    const rawId = params?.id;
     const id = normalizeId(rawId);
 
     if (!id) {
-      return NextResponse.json({ 
-        ok: false, 
-        error: "Invalid course id", 
-        rawId 
-      }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "Invalid course id", rawId }, { status: 400 });
     }
 
     console.log("🔍 API Individual - Buscando curso ID:", id);
 
-    // If Notion client configured, try to retrieve page
-    if (notion) {
-      try {
-        const page = await notion.pages.retrieve({ page_id: id });
-        const props = getSafeProperties(page);
-
-        console.log("🔍 Propiedades de Notion encontradas:", Object.keys(props));
-
-        // PROCESAR LOS CAMPOS COMO EN LA API DE LISTA
-        const rawModulos = props.Modulos?.number ?? props.Modulos?.rich_text ?? props.Modulos ?? null;
-        const modulos = normalizeModulosField(rawModulos);
-        
-        // Manejo seguro de la imagen
-        let imagenUrl = null;
-        try {
-          const imagenFiles = props.Imagen_Destacada?.files ?? props.Imagen_Destacada;
-          imagenUrl = safeFilesFirstUrl(imagenFiles);
-        } catch (e) {
-          console.warn("⚠️ Error al procesar imagen:", e);
-        }
-
-        const course = {
-          id: page.id,
-          nombre: safeTextFromTitle(props.Nombre?.title) || "Curso sin título",
-          descripcion: safeRichTextToString(props.Descripcion?.rich_text),
-          horas: Number(props.Horas?.number ?? 0) || 0,
-          modulos: modulos || [],
-          categoria: safeSelectName(props.Categoria?.select) ?? "General",
-          imagen: imagenUrl ?? "/placeholder.jpg",
-          destacado: Boolean(props.Destacado?.checkbox ?? false),
-          fecha_inicio: props.FechaInicio?.date?.start ?? null,
-          profesores: Array.isArray(props.Profesores?.multi_select) ? 
-            props.Profesores.multi_select.map((p: any) => p.name ?? "").filter(Boolean) : [],
-          modalidad: safeRichTextToString(props.Modalidad?.rich_text),
-          forma_pago: safeSelectName(props.FormaPago?.select),
-          fechas_modulos: safeRichTextToString(props.FechasModulos?.rich_text),
-          programa: safeRichTextToString(props.Programa?.rich_text),
-        };
-
-        console.log("✅ Curso procesado - Datos:", {
-          nombre: course.nombre,
-          descripcion: course.descripcion?.substring(0, 50) + "...",
-          horas: course.horas,
-          profesores: course.profesores,
-          modalidad: course.modalidad ? "PRESENTE" : "NO",
-          fechas_modulos: course.fechas_modulos ? "PRESENTE" : "NO"
-        });
-
-        return NextResponse.json({ ok: true, data: course });
-
-      } catch (e: any) {
-        console.warn("❌ Notion retrieve failed for id:", id, e?.message ?? e);
-        
-        // Verificar si es error de tipo (TypeError) o de Notion
-        if (e instanceof TypeError) {
-          return NextResponse.json({ 
-            ok: false, 
-            error: "Type error accessing Notion properties",
-            details: e.message 
-          }, { status: 500 });
-        }
-        
-        return NextResponse.json({ 
-          ok: false, 
-          error: "Notion page not found", 
-          id 
-        }, { status: 404 });
-      }
+    if (!notion) {
+      // Fallback mínimo cuando no hay NOTION_TOKEN (dev)
+      const minimal: ApiCourse = {
+        id,
+        nombre: "Curso (detalle no disponible)",
+        descripcion: "",
+        horas: 0,
+        modulos: [],
+        categoria: null,
+        imagen: null,
+        destacado: false,
+        fecha_inicio: null,
+        profesores: [],
+        modalidad: "",
+        forma_pago: null,
+        fechas_modulos: "",
+        programa: "",
+      };
+      return NextResponse.json({ ok: true, data: minimal });
     }
 
-    // Fallback: return a safe minimal course object so UI can render
-    return NextResponse.json({
-      ok: true,
-      data: {
-        id,
-        nombre: "Curso (detalle no disponible en dev)",
-        descripcion: "",
-        profesores: [],
-        modulos: [],
-      },
-    });
+    try {
+      const page = await notion.pages.retrieve({ page_id: id });
+
+      if (!("properties" in page)) {
+        console.warn("⚠️ Página sin propiedades (PartialPageObjectResponse). Devuelvo objeto mínimo.");
+        const minimal: ApiCourse = {
+          id: (page as any).id ?? id,
+          nombre: "Curso sin propiedades",
+          descripcion: "",
+          horas: 0,
+          modulos: [],
+          categoria: null,
+          imagen: null,
+          destacado: false,
+          fecha_inicio: null,
+          profesores: [],
+          modalidad: "",
+          forma_pago: null,
+          fechas_modulos: "",
+          programa: "",
+        };
+        return NextResponse.json({ ok: true, data: minimal });
+      }
+
+      const props = (page as PageObjectResponse).properties ?? {};
+      console.log("🔍 Props Notion:", Object.keys(props));
+
+      // Resolver nombres alternativos
+      const Nombre = resolveProp(props, ["Nombre", "Title", "name, titulo", "titulo", "Name"]);
+      const Descripcion = resolveProp(props, ["Descripcion", "Descripción", "Description"]);
+      const Horas = resolveProp(props, ["Horas", "Duración", "Duration"]);
+      const Modulos = resolveProp(props, ["Modulos", "Módulos", "Modules"]);
+      const Categoria = resolveProp(props, ["Categoria", "Categoría", "Category"]);
+      const ImagenDestacada = resolveProp(props, ["Imagen_Destacada", "Imagen Destacada", "Cover", "Imagen"]);
+      const Destacado = resolveProp(props, ["Destacado", "Featured"]);
+      const FechaInicio = resolveProp(props, ["FechaInicio", "Fecha Inicio", "Start", "Inicio"]);
+      const Profesores = resolveProp(props, ["Profesores", "Teachers", "Docentes"]);
+      const Modalidad = resolveProp(props, ["Modalidad", "Mode"]);
+      const FormaPago = resolveProp(props, ["FormaPago", "Forma de pago", "Payment"]);
+      const FechasModulos = resolveProp(props, ["FechasModulos", "Fechas Módulos", "Cronograma"]);
+      const Programa = resolveProp(props, ["Programa", "Syllabus", "Contenido"]);
+
+      const modulos = normalizeModulosField(
+        Modulos?.number ?? Modulos?.rich_text ?? Modulos
+      );
+
+      // Imagen destacada (tipado correcto y sin typos de operadores)
+      let imagenUrl: string | null = null;
+      try {
+        const imagenSource = ImagenDestacada?.files ?? ImagenDestacada;
+        imagenUrl = safeFilesFirstUrl(imagenSource);
+      } catch (e) {
+        console.warn("⚠️ Error al procesar imagen destacada:", e);
+      }
+
+      const course: ApiCourse = {
+        id: page.id,
+        nombre: safeTextFromTitle(Nombre?.title) || "Curso sin título",
+        descripcion: safeRichTextToString(Descripcion?.rich_text),
+        horas: Number(Horas?.number ?? 0) || 0,
+        modulos,
+        categoria: safeSelectName(Categoria?.select),
+        imagen: imagenUrl ?? null,
+        destacado: Boolean(Destacado?.checkbox ?? false),
+        fecha_inicio: FechaInicio?.date?.start ?? null,
+        profesores: Array.isArray(Profesores?.multi_select)
+          ? Profesores.multi_select.map((p: any) => p.name ?? "").filter(Boolean)
+          : [],
+        modalidad: safeRichTextToString(Modalidad?.rich_text),
+        forma_pago: safeSelectName(FormaPago?.select),
+        fechas_modulos: safeRichTextToString(FechasModulos?.rich_text),
+        programa: safeRichTextToString(Programa?.rich_text),
+      };
+
+      console.log("✅ Curso procesado:", {
+        nombre: course.nombre,
+        horas: course.horas,
+        profesores: course.profesores.length,
+        destacado: course.destacado,
+      });
+
+      return NextResponse.json({ ok: true, data: course });
+    } catch (e: any) {
+      const msg = e?.message ?? String(e);
+      const isNotFound =
+        msg?.includes("Not Found") || msg?.includes("object_not_found") || msg?.includes("path_failed");
+      console.warn("❌ Notion retrieve failed:", id, msg);
+      return NextResponse.json(
+        { ok: false, error: isNotFound ? "Notion page not found" : "Upstream error", id },
+        { status: isNotFound ? 404 : 502 }
+      );
+    }
   } catch (err: any) {
     console.error("💥 Error in /api/courses/[id]:", err);
-    return NextResponse.json({ 
-      ok: false, 
-      error: String(err?.message ?? err) 
-    }, { status: 500 });
+    return NextResponse.json({ ok: false, error: String(err?.message ?? err) }, { status: 500 });
   }
 }
