@@ -6,7 +6,6 @@ import type {
   SelectPropertyItemObjectResponse,
   FilesPropertyItemObjectResponse,
   RichTextItemResponse,
-  TitlePropertyValue,
 } from "@notionhq/client/build/src/api-endpoints";
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
@@ -53,7 +52,7 @@ function normalizeId(raw: unknown): string | null {
   return null;
 }
 
-function safeTextFromTitle(titleBlock: TitlePropertyValue["title"] | any): string {
+function safeTextFromTitle(titleBlock: RichTextItemResponse[] | any): string {
   try {
     return (titleBlock?.[0]?.plain_text ?? "").trim();
   } catch {
@@ -176,7 +175,7 @@ export async function GET(req: Request, context: { params?: any }) {
       console.log("🔍 Props Notion:", Object.keys(props));
 
       // Resolver nombres alternativos
-      const Nombre = resolveProp(props, ["Nombre", "Title", "name, titulo", "titulo", "Name"]);
+      const Nombre = resolveProp(props, ["Nombre", "Title", "titulo", "Name"]);
       const Descripcion = resolveProp(props, ["Descripcion", "Descripción", "Description"]);
       const Horas = resolveProp(props, ["Horas", "Duración", "Duration"]);
       const Modulos = resolveProp(props, ["Modulos", "Módulos", "Modules"]);
@@ -205,7 +204,7 @@ export async function GET(req: Request, context: { params?: any }) {
 
       const course: ApiCourse = {
         id: page.id,
-        nombre: safeTextFromTitle(Nombre?.title) || "Curso sin título",
+        nombre: safeTextFromTitle(Nombre?.title),
         descripcion: safeRichTextToString(Descripcion?.rich_text),
         horas: Number(Horas?.number ?? 0) || 0,
         modulos,
