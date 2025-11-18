@@ -246,7 +246,8 @@ async function getAllBlocks(pageId: string): Promise<NotionBlock[]> {
       });
       
       blocks = blocks.concat(response.results as NotionBlock[]);
-      cursor = response.has_more ? response.next_cursor : undefined;
+      // Corregimos la asignación para evitar null
+      cursor = response.has_more ? (response.next_cursor ?? undefined) : undefined;
     } while (cursor);
     
     return blocks;
