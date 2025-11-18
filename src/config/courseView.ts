@@ -14,6 +14,7 @@ export const CourseViewConfig = {
     showModulosList: true,
     showProfesores: true,
     showFechasModulos: true,
-    showPrograma: true
+    showPrograma: true,
+    showContent: true // <- Nueva opción
   }
 } as const;

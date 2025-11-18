@@ -1,5 +1,9 @@
-// src/components/CourseTemplate.tsx - VERSIÓN MEJORADA
+"use client";
+
+import { useState } from 'react';
 import { Course } from "@/types/Course";
+import CourseEnrollmentForm from './CourseEnrollmentForm';
+import { CourseViewConfig } from '@/config/courseView';
 import {
   CalendarIcon,
   UserIcon,
@@ -12,6 +16,7 @@ import {
 interface Props extends Partial<Course> {}
 
 export default function CourseTemplate({
+  id = "",
   nombre = "Curso",
   descripcion = "",
   fecha_inicio,
@@ -25,8 +30,11 @@ export default function CourseTemplate({
   forma_pago = "",
   fechas_modulos = "",
   programa = "",
+  content = [],
 }: Props) {
-  // Normalizar fecha
+  const [showEnrollmentForm, setShowEnrollmentForm] = useState(false);
+  const { detail } = CourseViewConfig;
+
   let fechaLegible: string | null = null;
   if (fecha_inicio) {
     try {
@@ -38,16 +46,15 @@ export default function CourseTemplate({
   }
 
   const profesoresList = Array.isArray(profesores) ? profesores : [];
+  const showAcademicCalendar = detail.showFechasModulos && fechas_modulos && fechas_modulos !== programa;
+  const showDetailedProgram = detail.showPrograma && programa;
+  const shouldShowCombinedSection = showAcademicCalendar || showDetailedProgram;
 
   return (
     <article className="space-y-8">
-      {/* Hero Section */}
       <section className="relative rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-800 text-white p-6 sm:p-8 shadow-xl overflow-hidden">
-        {/* Background Pattern */}
         <div className="absolute inset-0 bg-black/10"></div>
-        
         <div className="relative space-y-4">
-          {/* Badge */}
           <div className="flex flex-wrap items-center gap-3">
             <span className="inline-flex items-center gap-2 text-sm font-semibold text-white/90 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full">
               <AcademicCapIcon className="w-4 h-4" />
@@ -60,19 +67,19 @@ export default function CourseTemplate({
             )}
           </div>
 
-          {/* Title and Description */}
           <div className="space-y-4">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-tight">
-              {nombre}
-            </h1>
-            {descripcion && (
+            {detail.showNombre && (
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-tight">
+                {nombre}
+              </h1>
+            )}
+            {detail.showDescripcion && descripcion && (
               <p className="text-lg sm:text-xl text-white/90 leading-relaxed max-w-3xl">
                 {descripcion}
               </p>
             )}
           </div>
 
-          {/* Info Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4">
             {fechaLegible && (
               <div className="flex items-center gap-3 rounded-xl bg-white/10 backdrop-blur-sm p-4 border border-white/20">
@@ -92,7 +99,7 @@ export default function CourseTemplate({
               </div>
             </div>
 
-            {profesoresList.length > 0 && (
+            {detail.showProfesores && profesoresList.length > 0 && (
               <div className="flex items-center gap-3 rounded-xl bg-white/10 backdrop-blur-sm p-4 border border-white/20">
                 <UserIcon className="w-6 h-6 text-white flex-shrink-0" />
                 <div className="min-w-0">
@@ -115,12 +122,9 @@ export default function CourseTemplate({
         </div>
       </section>
 
-      {/* Main Content */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column - Main Content */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Course Image */}
-          {imagen && (
+          {detail.showImagen && imagen && (
             <div className="rounded-2xl overflow-hidden shadow-lg">
               <img
                 src={imagen}
@@ -130,7 +134,6 @@ export default function CourseTemplate({
             </div>
           )}
 
-          {/* Modality */}
           {modalidad && (
             <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-200">
               <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -143,8 +146,7 @@ export default function CourseTemplate({
             </div>
           )}
 
-          {/* Modules */}
-          {modulos.length > 0 && (
+          {detail.showModulosList && modulos.length > 0 && (
             <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-200">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">
                 Estructura del Curso ({modulos.length} módulos)
@@ -169,33 +171,77 @@ export default function CourseTemplate({
             </div>
           )}
 
-          {/* Dates by Module */}
-          {fechas_modulos && (
+          {shouldShowCombinedSection && (
             <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-200">
               <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <CalendarIcon className="w-6 h-6 text-blue-600" />
-                Calendario Académico
+                {showAcademicCalendar && showDetailedProgram 
+                  ? "Calendario Académico y Programa" 
+                  : showAcademicCalendar 
+                    ? "Calendario Académico" 
+                    : "Programa Detallado"}
               </h2>
               <div className="prose prose-lg max-w-none text-gray-700 leading-relaxed whitespace-pre-line bg-blue-50 p-4 rounded-lg">
-                {fechas_modulos}
+                {showAcademicCalendar && fechas_modulos}
+                {showAcademicCalendar && showDetailedProgram && (
+                  <>
+                    <div className="my-6 border-t border-gray-300"></div>
+                    <div className="mt-6">
+                      {programa}
+                    </div>
+                  </>
+                )}
+                {showDetailedProgram && !showAcademicCalendar && programa}
               </div>
             </div>
           )}
 
-          {/* Program */}
-          {programa && (
+          {Array.isArray(content) && content.length > 0 && (
             <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Programa Detallado</h2>
-              <div className="prose prose-lg max-w-none text-gray-700 leading-relaxed whitespace-pre-line">
-                {programa}
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Contenido del Curso</h2>
+              <div className="space-y-4">
+                {content.map((block, index) => {
+                  if (!block || !block.content) return null;
+                  
+                  switch (block.type) {
+                    case 'heading_1':
+                      return <h1 key={index} className="text-3xl font-bold text-gray-900 mt-8 mb-4">{block.content}</h1>;
+                    case 'heading_2':
+                      return <h2 key={index} className="text-2xl font-bold text-gray-800 mt-6 mb-3">{block.content}</h2>;
+                    case 'heading_3':
+                      return <h3 key={index} className="text-xl font-semibold text-gray-700 mt-4 mb-2">{block.content}</h3>;
+                    case 'quote':
+                      return (
+                        <blockquote key={index} className="border-l-4 border-emerald-500 pl-4 italic text-gray-600 my-4 bg-emerald-50 p-4 rounded-r-lg">
+                          {block.content}
+                        </blockquote>
+                      );
+                    case 'code':
+                      return (
+                        <pre key={index} className="bg-gray-800 text-gray-100 p-4 rounded-lg my-4 overflow-x-auto text-sm">
+                          <code>{block.content}</code>
+                        </pre>
+                      );
+                    case 'divider':
+                      return <hr key={index} className="my-8 border-gray-200" />;
+                    default:
+                      return <p key={index} className="text-gray-700 mb-4 leading-relaxed">{block.content}</p>;
+                  }
+                })}
               </div>
+            </div>
+          )}
+
+          {(!content || (Array.isArray(content) && content.length === 0)) && (
+            <div className="rounded-2xl bg-gray-50 p-6 border border-gray-200">
+              <p className="text-gray-500 text-center italic">
+                No hay contenido adicional disponible para este curso.
+              </p>
             </div>
           )}
         </div>
 
-        {/* Right Column - Sidebar */}
         <aside className="space-y-6">
-          {/* Summary Card */}
           <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-200 sticky top-6">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Resumen del Curso</h3>
             
@@ -218,7 +264,7 @@ export default function CourseTemplate({
                 </div>
               </div>
 
-              {profesoresList.length > 0 && (
+              {detail.showProfesores && profesoresList.length > 0 && (
                 <div className="flex items-center gap-3">
                   <UserIcon className="w-5 h-5 text-emerald-600 flex-shrink-0" />
                   <div>
@@ -239,9 +285,11 @@ export default function CourseTemplate({
               )}
             </div>
 
-            {/* CTA Button */}
             <div className="mt-6 space-y-3">
-              <button className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg">
+              <button 
+                onClick={() => setShowEnrollmentForm(true)}
+                className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg"
+              >
                 🎓 Inscribirme Ahora
               </button>
               
@@ -254,7 +302,6 @@ export default function CourseTemplate({
             </div>
           </div>
 
-          {/* Additional Info */}
           <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 p-6 border border-blue-200">
             <h4 className="font-bold text-blue-900 text-lg mb-2">¿Necesitas más información?</h4>
             <p className="text-blue-800 text-sm mb-4">
@@ -266,6 +313,23 @@ export default function CourseTemplate({
           </div>
         </aside>
       </section>
+
+      {showEnrollmentForm && (
+        <CourseEnrollmentForm 
+          course={{
+            id,
+            nombre,
+            descripcion,
+            categoria,
+            horas,
+            fecha_inicio,
+            profesores: profesoresList,
+            modalidad,
+            forma_pago
+          }}
+          onClose={() => setShowEnrollmentForm(false)}
+        />
+      )}
     </article>
   );
 }
