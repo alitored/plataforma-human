@@ -1,6 +1,7 @@
 // src/app/api/courses/[id]/route.ts
 import { NextResponse } from "next/server";
 import { Client } from "@notionhq/client";
+import { ProcessedBlock } from "@/types/Course";
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const notion = NOTION_TOKEN ? new Client({ auth: NOTION_TOKEN }) : null;
@@ -79,7 +80,7 @@ function cleanRichText(richTextArray: any[] | null | undefined): string {
   return result;
 }
 
-// Procesar bloques de forma más robusta
+// Procesar bloques de forma más robusta y compatible
 function processBlocksSafely(blocks: NotionBlock[]): ProcessedBlock[] {
   const result: ProcessedBlock[] = [];
   
@@ -99,7 +100,7 @@ function processBlocksSafely(blocks: NotionBlock[]): ProcessedBlock[] {
               type: 'paragraph',
               content: paraText,
               rich_text: block.paragraph?.rich_text || []
-            };
+            } as ProcessedBlock;
           }
           break;
           
@@ -110,7 +111,7 @@ function processBlocksSafely(blocks: NotionBlock[]): ProcessedBlock[] {
               type: 'heading_1',
               content: h1Text,
               rich_text: block.heading_1?.rich_text || []
-            };
+            } as ProcessedBlock;
           }
           break;
           
@@ -121,7 +122,7 @@ function processBlocksSafely(blocks: NotionBlock[]): ProcessedBlock[] {
               type: 'heading_2',
               content: h2Text,
               rich_text: block.heading_2?.rich_text || []
-            };
+            } as ProcessedBlock;
           }
           break;
           
@@ -132,7 +133,7 @@ function processBlocksSafely(blocks: NotionBlock[]): ProcessedBlock[] {
               type: 'heading_3',
               content: h3Text,
               rich_text: block.heading_3?.rich_text || []
-            };
+            } as ProcessedBlock;
           }
           break;
           
@@ -143,7 +144,7 @@ function processBlocksSafely(blocks: NotionBlock[]): ProcessedBlock[] {
               type: 'bulleted_list_item',
               content: bulletText,
               rich_text: block.bulleted_list_item?.rich_text || []
-            };
+            } as ProcessedBlock;
           }
           break;
           
@@ -154,7 +155,7 @@ function processBlocksSafely(blocks: NotionBlock[]): ProcessedBlock[] {
               type: 'numbered_list_item',
               content: numberText,
               rich_text: block.numbered_list_item?.rich_text || []
-            };
+            } as ProcessedBlock;
           }
           break;
           
@@ -165,7 +166,7 @@ function processBlocksSafely(blocks: NotionBlock[]): ProcessedBlock[] {
               type: 'quote',
               content: quoteText,
               rich_text: block.quote?.rich_text || []
-            };
+            } as ProcessedBlock;
           }
           break;
           
@@ -177,59 +178,68 @@ function processBlocksSafely(blocks: NotionBlock[]): ProcessedBlock[] {
               content: codeText,
               language: block.code?.language || 'plain',
               rich_text: block.code?.rich_text || []
-            };
+            } as ProcessedBlock;
           }
           break;
           
         case 'divider':
-          processedBlock = { type: 'divider' };
+          processedBlock = { type: 'divider' } as ProcessedBlock;
           break;
           
         case 'image':
           const imageUrl = block.image?.file?.url || block.image?.external?.url;
+          const imageCaption = cleanRichText(block.image?.caption);
           if (imageUrl) {
             processedBlock = {
               type: 'image',
-              content: imageUrl,
-              rich_text: block.image?.caption || []
-            };
+              url: imageUrl,
+              caption: imageCaption
+            } as ProcessedBlock;
+          }
+          break;
+          
+        case 'callout':
+          const calloutText = cleanRichText(block.callout?.rich_text);
+          if (calloutText) {
+            processedBlock = {
+              type: 'callout',
+              content: calloutText,
+              rich_text: block.callout?.rich_text || [],
+              icon: block.callout?.icon?.emoji || null
+            } as ProcessedBlock;
           }
           break;
           
         default:
           console.log(`⚠️ Tipo de bloque no manejado: ${block.type}`);
-          // Intentar extraer texto de cualquier propiedad que tenga rich_text
-          for (const key in block) {
-            if (key !== 'type' && key !== 'id' && block[key]?.rich_text) {
-              const text = cleanRichText(block[key].rich_text);
-              if (text) {
-                processedBlock = {
-                  type: block.type,
-                  content: text,
-                  rich_text: block[key].rich_text
-                };
-                break;
-              }
-            }
-          }
+          // Para tipos no soportados, crear un bloque 'unsupported'
+          processedBlock = {
+            type: 'unsupported',
+            raw: block
+          } as ProcessedBlock;
           break;
       }
       
       if (processedBlock) {
         result.push(processedBlock);
-        console.log(`✅ Bloque procesado: ${processedBlock.type} - "${processedBlock.content?.substring(0, 50)}..."`);
+        console.log(`✅ Bloque procesado: ${processedBlock.type} - "${processedBlock.type === 'image' ? processedBlock.url : (processedBlock as any).content?.substring(0, 50)}..."`);
       } else {
         console.log(`❌ Bloque sin contenido: ${block.type}`);
       }
     } catch (error) {
       console.error(`💥 Error procesando bloque ${block.type}:`, error);
-      continue;
+      // En caso de error, crear un bloque 'unsupported'
+      result.push({
+        type: 'unsupported',
+        raw: block
+      } as ProcessedBlock);
     }
   }
   
   console.log(`🎯 Total de bloques procesados: ${result.length}`);
   return result;
 }
+  
 
 async function getAllBlocks(pageId: string): Promise<NotionBlock[]> {
   if (!notion) return [];
