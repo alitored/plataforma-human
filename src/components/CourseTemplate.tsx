@@ -13,7 +13,19 @@ import {
   TagIcon,
 } from "@heroicons/react/24/outline";
 
-interface Props extends Partial<Course> {}
+// Interface para los bloques procesados
+interface ProcessedBlock {
+  type: string;
+  content?: string;
+  rich_text?: any[];
+  url?: string;
+  caption?: string;
+  language?: string;
+}
+
+interface Props extends Partial<Course> {
+  content?: ProcessedBlock[];
+}
 
 export default function CourseTemplate({
   id = "",
@@ -49,6 +61,122 @@ export default function CourseTemplate({
   const showAcademicCalendar = detail.showFechasModulos && fechas_modulos && fechas_modulos !== programa;
   const showDetailedProgram = detail.showPrograma && programa;
   const shouldShowCombinedSection = showAcademicCalendar || showDetailedProgram;
+
+  // Función para renderizar bloques de contenido
+  const renderContentBlock = (block: ProcessedBlock, index: number) => {
+    if (!block) return null;
+
+    // Si el bloque tiene rich_text, usar esa estructura
+    if (block.rich_text && Array.isArray(block.rich_text)) {
+      const textContent = block.rich_text
+        .map((textObj: any) => textObj.plain_text || textObj.text?.content || '')
+        .join('')
+        .trim();
+
+      if (!textContent && block.type !== 'image' && block.type !== 'divider') return null;
+
+      switch (block.type) {
+        case 'heading_1':
+          return <h1 key={index} className="text-3xl font-bold text-gray-900 mt-8 mb-4">{textContent}</h1>;
+        case 'heading_2':
+          return <h2 key={index} className="text-2xl font-bold text-gray-800 mt-6 mb-3">{textContent}</h2>;
+        case 'heading_3':
+          return <h3 key={index} className="text-xl font-semibold text-gray-700 mt-4 mb-2">{textContent}</h3>;
+        case 'quote':
+          return (
+            <blockquote key={index} className="border-l-4 border-emerald-500 pl-4 italic text-gray-600 my-4 bg-emerald-50 p-4 rounded-r-lg">
+              {textContent}
+            </blockquote>
+          );
+        case 'code':
+          return (
+            <pre key={index} className="bg-gray-800 text-gray-100 p-4 rounded-lg my-4 overflow-x-auto text-sm">
+              <code>{textContent}</code>
+            </pre>
+          );
+        case 'bulleted_list_item':
+          return (
+            <ul key={index} className="list-disc list-inside my-2 ml-4">
+              <li className="text-gray-700 mb-2 leading-relaxed">{textContent}</li>
+            </ul>
+          );
+        case 'numbered_list_item':
+          return (
+            <ol key={index} className="list-decimal list-inside my-2 ml-4">
+              <li className="text-gray-700 mb-2 leading-relaxed">{textContent}</li>
+            </ol>
+          );
+        case 'divider':
+          return <hr key={index} className="my-8 border-gray-200" />;
+        case 'image':
+          return block.url ? (
+            <div key={index} className="my-6">
+              <img 
+                src={block.url} 
+                alt={textContent || "Imagen del curso"} 
+                className="max-w-full h-auto rounded-lg mx-auto"
+              />
+              {textContent && (
+                <p className="text-sm text-gray-600 text-center mt-2">{textContent}</p>
+              )}
+            </div>
+          ) : null;
+        default:
+          return <p key={index} className="text-gray-700 mb-4 leading-relaxed">{textContent}</p>;
+      }
+    }
+    
+    // Si no tiene rich_text pero tiene content, usar content como fallback
+    if (block.content && typeof block.content === 'string') {
+      switch (block.type) {
+        case 'heading_1':
+          return <h1 key={index} className="text-3xl font-bold text-gray-900 mt-8 mb-4">{block.content}</h1>;
+        case 'heading_2':
+          return <h2 key={index} className="text-2xl font-bold text-gray-800 mt-6 mb-3">{block.content}</h2>;
+        case 'heading_3':
+          return <h3 key={index} className="text-xl font-semibold text-gray-700 mt-4 mb-2">{block.content}</h3>;
+        case 'quote':
+          return (
+            <blockquote key={index} className="border-l-4 border-emerald-500 pl-4 italic text-gray-600 my-4 bg-emerald-50 p-4 rounded-r-lg">
+              {block.content}
+            </blockquote>
+          );
+        case 'code':
+          return (
+            <pre key={index} className="bg-gray-800 text-gray-100 p-4 rounded-lg my-4 overflow-x-auto text-sm">
+              <code>{block.content}</code>
+            </pre>
+          );
+        case 'divider':
+          return <hr key={index} className="my-8 border-gray-200" />;
+        default:
+          return <p key={index} className="text-gray-700 mb-4 leading-relaxed">{block.content}</p>;
+      }
+    }
+    
+    // Manejar bloques de imagen que no tienen content ni rich_text
+    if (block.type === 'image' && block.url) {
+      return (
+        <div key={index} className="my-6">
+          <img 
+            src={block.url} 
+            alt={block.caption || "Imagen del curso"} 
+            className="max-w-full h-auto rounded-lg mx-auto"
+          />
+          {block.caption && (
+            <p className="text-sm text-gray-600 text-center mt-2">{block.caption}</p>
+          )}
+        </div>
+      );
+    }
+    
+    // Manejar divisores sin contenido
+    if (block.type === 'divider') {
+      return <hr key={index} className="my-8 border-gray-200" />;
+    }
+    
+    return null;
+  };
 
   return (
     <article className="space-y-8">
@@ -196,38 +324,12 @@ export default function CourseTemplate({
             </div>
           )}
 
+          {/* ✅ Contenido Rich Text - CORREGIDO */}
           {Array.isArray(content) && content.length > 0 && (
             <div className="rounded-2xl bg-white p-6 shadow-sm border border-gray-200">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Contenido del Curso</h2>
               <div className="space-y-4">
-                {content.map((block, index) => {
-                  if (!block || !block.content) return null;
-                  
-                  switch (block.type) {
-                    case 'heading_1':
-                      return <h1 key={index} className="text-3xl font-bold text-gray-900 mt-8 mb-4">{block.content}</h1>;
-                    case 'heading_2':
-                      return <h2 key={index} className="text-2xl font-bold text-gray-800 mt-6 mb-3">{block.content}</h2>;
-                    case 'heading_3':
-                      return <h3 key={index} className="text-xl font-semibold text-gray-700 mt-4 mb-2">{block.content}</h3>;
-                    case 'quote':
-                      return (
-                        <blockquote key={index} className="border-l-4 border-emerald-500 pl-4 italic text-gray-600 my-4 bg-emerald-50 p-4 rounded-r-lg">
-                          {block.content}
-                        </blockquote>
-                      );
-                    case 'code':
-                      return (
-                        <pre key={index} className="bg-gray-800 text-gray-100 p-4 rounded-lg my-4 overflow-x-auto text-sm">
-                          <code>{block.content}</code>
-                        </pre>
-                      );
-                    case 'divider':
-                      return <hr key={index} className="my-8 border-gray-200" />;
-                    default:
-                      return <p key={index} className="text-gray-700 mb-4 leading-relaxed">{block.content}</p>;
-                  }
-                })}
+                {content.map((block, index) => renderContentBlock(block, index))}
               </div>
             </div>
           )}
