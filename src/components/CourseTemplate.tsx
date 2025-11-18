@@ -383,21 +383,26 @@ export default function CourseTemplate({
       </section>
 
       {showEnrollmentForm && (
-        <CourseEnrollmentForm 
-          course={{
-            id,
-            nombre,
-            descripcion,
-            categoria,
-            horas,
-            fecha_inicio,
-            profesores: profesoresList,
-            modalidad,
-            forma_pago
-          }}
-          onClose={() => setShowEnrollmentForm(false)}
-        />
-      )}
+  <CourseEnrollmentForm 
+    course={{
+      id,
+      nombre,
+      descripcion,
+      categoria,
+      horas,
+      fecha_inicio,
+      profesores: profesoresList,
+      modalidad,
+      forma_pago,
+      modulos, // ← Propiedad requerida agregada
+      imagen, // ← Opcional pero recomendado
+      destacado, // ← Opcional pero recomendado
+      fechas_modulos, // ← Opcional
+      programa // ← Opcional
+    }}
+    onClose={() => setShowEnrollmentForm(false)}
+  />
+)}
     </article>
   );
 }
