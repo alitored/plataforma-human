@@ -295,7 +295,7 @@ export default function ProgramaCurso({
                         </span>
                       )}
                       <span className="text-gray-600">
-                        {modulo.semanas.length} semana{modulo.semanas.length !== 1 ? 's' : ''}
+                        {modulo.semanas?.length || 0} semana{(modulo.semanas?.length || 0) !== 1 ? 's' : ''}
                       </span>
                     </div>
                   </div>
