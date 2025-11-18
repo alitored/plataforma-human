@@ -21,13 +21,26 @@ export default function Page() {
   useEffect(() => {
     async function loadCourses() {
       try {
-        const envBase = process.env.NEXT_PUBLIC_BASE_URL;
-        const base = (envBase ?? "http://localhost:3000").replace(/\/$/, "");
+        // En cliente podemos usar window.location.origin
+        const origin =
+          typeof window !== "undefined"
+            ? window.location.origin
+            : process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+
+        const base = origin.replace(/\/$/, "");
         const res = await fetch(`${base}/api/courses`, { cache: "no-store" });
+
         const txt = await res.text();
-        const body = (() => { try { return JSON.parse(txt); } catch { return txt; }})();
+        const body = (() => {
+          try {
+            return JSON.parse(txt);
+          } catch {
+            return txt;
+          }
+        })();
+
         const data = body?.data ?? body;
-        
+
         if (Array.isArray(data)) setCourses(data);
         else if (Array.isArray(body?.results)) setCourses(body.results);
         else setCourses(Array.isArray(body) ? body : []);
@@ -52,7 +65,14 @@ export default function Page() {
 
   return (
     <main style={{ padding: 20 }}>
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 18 }}>
+      <header
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "baseline",
+          marginBottom: 18,
+        }}
+      >
         <h1 style={{ margin: 0 }}>Cursos</h1>
         <div style={{ fontSize: 13, color: "#666" }}>
           Mostrando <strong>{courses.length}</strong> cursos
