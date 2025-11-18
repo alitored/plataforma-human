@@ -10,6 +10,22 @@ interface ProgramaCursoProps {
   descripcion?: string;
 }
 
+// Interfaces para los tipos
+interface Semana {
+  numero: number;
+  titulo: string;
+  descripcion: string;
+  fecha?: string;
+}
+
+interface Modulo {
+  numero: number;
+  titulo: string;
+  fecha?: string;
+  contenido: string;
+  semanas?: Semana[];
+}
+
 export default function ProgramaCurso({ 
   fechasModulos, 
   programa, 
@@ -25,19 +41,8 @@ export default function ProgramaCurso({
   if (!contenido?.trim()) return null;
 
   // Parser ultra-flexible que funciona con múltiples formatos
-  const parsearContenido = (texto: string) => {
-    const modulos: Array<{
-      numero: number;
-      titulo: string;
-      fecha?: string;
-      contenido: string;
-      semanas?: Array<{
-        numero: number;
-        titulo: string;
-        descripcion: string;
-        fecha?: string;
-      }>;
-    }> = [];
+  const parsearContenido = (texto: string): Modulo[] | null => {
+    const modulos: Modulo[] = [];
 
     if (!texto?.trim()) return null;
 
@@ -66,7 +71,7 @@ export default function ProgramaCurso({
         // Dividir el texto usando las posiciones de los matches
         const indices = matches.map(match => match.index);
         for (let i = 0; i < indices.length; i++) {
-          const inicio = indices[i];
+          const inicio = indices[i] || 0;
           const fin = indices[i + 1] || textoLimpio.length;
           const bloque = textoLimpio.substring(inicio, fin).trim();
           if (bloque) bloques.push(bloque);
@@ -137,7 +142,7 @@ export default function ProgramaCurso({
       }
 
       // Intentar extraer semanas si el formato es estructurado
-      const semanas: Array<{ numero: number; titulo: string; descripcion: string; fecha?: string }> = [];
+      const semanas: Semana[] = [];
       
       // Patrones para semanas
       const patronesSemana = [
@@ -295,7 +300,7 @@ export default function ProgramaCurso({
                         </span>
                       )}
                       <span className="text-gray-600">
-                        {modulo.semanas?.length || 0} semana{(modulo.semanas?.length || 0) !== 1 ? 's' : ''}
+                        {(modulo.semanas || []).length} semana{(modulo.semanas || []).length !== 1 ? 's' : ''}
                       </span>
                     </div>
                   </div>
@@ -317,7 +322,7 @@ export default function ProgramaCurso({
             {modulosExpandidos.has(modulo.numero) && (
               <div className="p-6 bg-gray-50 border-t border-gray-200">
                 <div className="grid gap-3">
-                  {modulo.semanas.map((semana) => (
+                  {(modulo.semanas || []).map((semana) => (
                     <div 
                       key={semana.numero}
                       className="bg-white rounded-lg p-4 border border-gray-200 hover:border-emerald-300 transition-colors"
@@ -349,7 +354,7 @@ export default function ProgramaCurso({
                 </div>
                 
                 {/* Mostrar contenido crudo si no hay semanas estructuradas */}
-                {modulo.semanas.length === 1 && modulo.semanas[0].descripcion === modulo.contenido && (
+                {modulo.semanas && modulo.semanas.length === 1 && modulo.semanas[0].descripcion === modulo.contenido && (
                   <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <p className="text-yellow-800 text-sm">
                       <strong>Nota:</strong> Mostrando contenido en formato original
@@ -368,7 +373,7 @@ export default function ProgramaCurso({
       {/* Footer informativo */}
       <div className="mt-6 pt-6 border-t border-gray-200">
         <p className="text-sm text-gray-500 text-center">
-          Total: {modulos.length} módulos • {modulos.reduce((total, mod) => total + mod.semanas.length, 0)} semanas
+          Total: {modulos.length} módulos • {modulos.reduce((total, mod) => total + (mod.semanas || []).length, 0)} semanas
         </p>
       </div>
     </section>
