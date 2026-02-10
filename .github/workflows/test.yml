@@ -1,0 +1,13 @@
+name: Prueba de Motores (Alitored)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # Esto activa el botón de "Play" manual
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Saludo del Robot
+        run: echo "¡Robot SmartDash activado en la cuenta nueva de Alitored!"
